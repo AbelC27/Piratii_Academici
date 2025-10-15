@@ -1,6 +1,6 @@
 from django import forms
+from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
-from .models import User
 import re
 
 
@@ -78,11 +78,12 @@ class UserRegistrationForm(forms.ModelForm):
         return password
 
     def save(self, commit=True):
-        user = super().save(commit=False)
-        # Hash the password before saving
-        user.password = make_password(self.cleaned_data['password'])
-        if commit:
-            user.save()
+        # Use Django's create_user method which properly hashes the password
+        user = User.objects.create_user(
+            username=self.cleaned_data['username'],
+            email=self.cleaned_data['email'],
+            password=self.cleaned_data['password']
+        )
         return user
 
 class LoginForm(forms.Form):
