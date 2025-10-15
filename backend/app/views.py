@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.http import HttpResponse
 from .forms import UserRegistrationForm
 
+
 # Andi
 
 def signup_view(request):
@@ -155,6 +156,34 @@ def demote_user(request, user_id):
     except AuthUser.DoesNotExist:
         messages.error(request, 'User does not exist')
     return redirect('admin')
+
+@login_required
+def leaderboard_view(request):
+    submissions = Submission.objects.all()
+    users = AuthUser.objects.all()
+    total_users = users.count()
+    leaderboard = []
+    for user in users:
+        correct_submission = 0
+        for submission in submissions:
+            if user == submission.user:
+                if submission.was_correct:
+                    correct_submission += 1
+        leaderboard.append({
+            'user': user,
+            'problems_solved': correct_submission
+        })   
+
+    leaderboard.sort(key=lambda x: (-x['problems_solved'], x['user'].date_joined))
+    total_problems = Problem.objects.count()
+    total_solved = sum(entry['problems_solved'] for entry in leaderboard)
+    return render(request, 'app/leaderboard.html', {
+        'leaderboard': leaderboard,
+        'total_users': total_users,
+        'total_problems': total_problems,
+        'total_solved': total_solved 
+    })
+
 
 
 # Codrin

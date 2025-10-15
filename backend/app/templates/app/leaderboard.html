@@ -1,0 +1,350 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Leaderboard - PBMate{% endblock %}
+
+{% block content %}
+<style>
+    .container {
+        max-width: 1000px;
+        width: 100%;
+    }
+
+    .leaderboard-header {
+        text-align: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 3px solid #667eea;
+        animation: fadeInDown 0.5s ease-out;
+    }
+
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .leaderboard-header h1 {
+        color: #333;
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .leaderboard-header p {
+        color: #666;
+        font-size: 1rem;
+    }
+
+    .stats-bar {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+        animation: fadeIn 0.6s ease-out 0.2s both;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    .stat-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        transition: transform 0.3s ease;
+    }
+
+    .stat-box:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .stat-box h3 {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+        font-weight: bold;
+    }
+
+    .stat-box p {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        font-weight: 500;
+    }
+
+    .leaderboard-container {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        animation: fadeIn 0.6s ease-out 0.4s both;
+    }
+
+    .leaderboard-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .leaderboard-table thead {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .leaderboard-table th {
+        padding: 1.2rem 1rem;
+        text-align: left;
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .leaderboard-table th.rank-col {
+        width: 80px;
+        text-align: center;
+    }
+
+    .leaderboard-table th.score-col {
+        width: 120px;
+        text-align: center;
+    }
+
+    .leaderboard-table th.joined-col {
+        text-align: right;
+    }
+
+    .leaderboard-table tbody tr {
+        border-bottom: 1px solid #eee;
+        transition: all 0.3s ease;
+    }
+
+    .leaderboard-table tbody tr:hover {
+        background: linear-gradient(90deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+        transform: scale(1.01);
+    }
+
+    .leaderboard-table tbody tr:last-child {
+        border-bottom: none;
+    }
+
+    .leaderboard-table td {
+        padding: 1.2rem 1rem;
+        color: #333;
+        font-size: 0.95rem;
+    }
+
+    .rank-cell {
+        text-align: center;
+        font-weight: bold;
+        font-size: 1.2rem;
+    }
+
+    /* Trophy colors for top 3 */
+    .rank-1 {
+        color: #FFD700;
+        font-size: 2rem;
+        text-shadow: 0 2px 4px rgba(255, 215, 0, 0.3);
+    }
+
+    .rank-2 {
+        color: #C0C0C0;
+        font-size: 1.8rem;
+        text-shadow: 0 2px 4px rgba(192, 192, 192, 0.3);
+    }
+
+    .rank-3 {
+        color: #CD7F32;
+        font-size: 1.6rem;
+        text-shadow: 0 2px 4px rgba(205, 127, 50, 0.3);
+    }
+
+    .rank-other {
+        color: #667eea;
+    }
+
+    .username-cell {
+        font-weight: 600;
+        color: #333;
+        font-size: 1.1rem;
+    }
+
+    .username-cell.current-user {
+        color: #667eea;
+        font-weight: bold;
+    }
+
+    .username-cell.current-user::after {
+        content: " (You)";
+        font-size: 0.85rem;
+        color: #764ba2;
+        font-weight: normal;
+    }
+
+    .score-cell {
+        text-align: center;
+        font-weight: bold;
+        font-size: 1.1rem;
+        color: #667eea;
+    }
+
+    .score-badge {
+        display: inline-block;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
+        box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+    }
+
+    .top-3-row {
+        background: linear-gradient(90deg, rgba(255, 215, 0, 0.05) 0%, rgba(255, 215, 0, 0.02) 100%);
+    }
+
+    .top-3-row.rank-2-row {
+        background: linear-gradient(90deg, rgba(192, 192, 192, 0.05) 0%, rgba(192, 192, 192, 0.02) 100%);
+    }
+
+    .top-3-row.rank-3-row {
+        background: linear-gradient(90deg, rgba(205, 127, 50, 0.05) 0%, rgba(205, 127, 50, 0.02) 100%);
+    }
+
+    .current-user-row {
+        background: linear-gradient(90deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        border-left: 4px solid #667eea;
+    }
+
+    .no-users {
+        text-align: center;
+        padding: 3rem;
+        color: #666;
+    }
+
+    .no-users-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    .medal-icon {
+        display: inline-block;
+        margin-right: 0.5rem;
+    }
+
+    .join-date {
+        color: #999;
+        font-size: 0.85rem;
+        text-align: right;
+    }
+
+    .problems-solved-detail {
+        font-size: 0.85rem;
+        color: #666;
+        margin-top: 0.25rem;
+    }
+</style>
+
+<div class="leaderboard-header">
+    <h1>🏆 Leaderboard</h1>
+    <p>Top problem solvers - Compete and climb the ranks!</p>
+</div>
+
+<!-- Statistics Bar -->
+<div class="stats-bar">
+    <div class="stat-box">
+        <h3>{{ total_users }}</h3>
+        <p>👥 Total Users</p>
+    </div>
+    <div class="stat-box">
+        <h3>{{ total_problems }}</h3>
+        <p>🧩 Total Problems</p>
+    </div>
+    <div class="stat-box">
+        <h3>{{ total_solved }}</h3>
+        <p>✅ Problems Solved</p>
+    </div>
+</div>
+
+<!-- Leaderboard Table -->
+<div class="leaderboard-container">
+    {% if leaderboard %}
+    <table class="leaderboard-table">
+        <thead>
+            <tr>
+                <th class="rank-col">Rank</th>
+                <th>Username</th>
+                <th class="score-col">Problems Solved</th>
+                <th class="joined-col">Joined</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in leaderboard %}
+            <tr class="{% if forloop.counter == 1 %}top-3-row{% elif forloop.counter == 2 %}top-3-row rank-2-row{% elif forloop.counter == 3 %}top-3-row rank-3-row{% endif %} {% if user.is_authenticated and entry.user.id == user.id %}current-user-row{% endif %}">
+                <td class="rank-cell">
+                    {% if forloop.counter == 1 %}
+                        <span class="rank-1">🥇</span>
+                    {% elif forloop.counter == 2 %}
+                        <span class="rank-2">🥈</span>
+                    {% elif forloop.counter == 3 %}
+                        <span class="rank-3">🥉</span>
+                    {% else %}
+                        <span class="rank-other">#{{ forloop.counter }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="username-cell {% if user.is_authenticated and entry.user.id == user.id %}current-user{% endif %}">
+                        {{ entry.user.username }}
+                    </div>
+                    {% if entry.user.is_staff %}
+                        <span style="font-size: 0.8rem; color: #ffc107;">⭐ Admin</span>
+                    {% endif %}
+                </td>
+                <td class="score-cell">
+                    <span class="score-badge">{{ entry.problems_solved }} 🎯</span>
+                </td>
+                <td class="join-date">
+                    {{ entry.user.date_joined|date:"M d, Y" }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="no-users">
+        <div class="no-users-icon">🏆</div>
+        <h3>No Users Yet!</h3>
+        <p>Be the first to solve problems and claim the top spot!</p>
+    </div>
+    {% endif %}
+</div>
+
+{% if user.is_authenticated %}
+<script>
+    // Smooth scroll to current user's position
+    document.addEventListener('DOMContentLoaded', function() {
+        const currentUserRow = document.querySelector('.current-user-row');
+        if (currentUserRow) {
+            setTimeout(() => {
+                currentUserRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 500);
+        }
+    });
+</script>
+{% endif %}
+
+{% endblock %}
