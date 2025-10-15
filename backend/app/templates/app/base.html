@@ -15,9 +15,96 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
+        }
+
+        /* Navbar Styles */
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar-brand {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .navbar-links {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .nav-link, .nav-btn {
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link {
+            color: #333;
+        }
+
+        .nav-link:hover {
+            background: #f0f0f0;
+        }
+
+        .nav-btn {
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .btn-login {
+            background: transparent;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-login:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-signup {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+        }
+
+        .btn-signup:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-logout {
+            background: #dc3545;
+            color: white;
+            border: none;
+        }
+
+        .btn-logout:hover {
+            background: #c82333;
+        }
+
+        .user-info {
+            color: #333;
+            margin-right: 1rem;
+        }
+
+        .page-wrapper {
             display: flex;
             align-items: center;
             justify-content: center;
+            min-height: calc(100vh - 80px);
+            padding: 2rem;
         }
 
         .container {
@@ -173,19 +260,36 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        {% if messages %}
-            <div class="messages">
-                {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            </div>
-        {% endif %}
-        
-        {% block content %}
-        {% endblock %}
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="{% url 'home' %}" class="navbar-brand">PBMate</a>
+        <div class="navbar-links">
+            {% if user.is_authenticated %}
+                <span class="user-info">Welcome, {{ user.username }}!</span>
+                <a href="{% url 'logout' %}" class="nav-btn btn-logout">Logout</a>
+            {% else %}
+                <a href="{% url 'login' %}" class="nav-btn btn-login">Login</a>
+                <a href="{% url 'signup' %}" class="nav-btn btn-signup">Sign Up</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <!-- Page Content -->
+    <div class="page-wrapper">
+        <div class="container">
+            {% if messages %}
+                <div class="messages">
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            
+            {% block content %}
+            {% endblock %}
+        </div>
     </div>
 </body>
 </html>
