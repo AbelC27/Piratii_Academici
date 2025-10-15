@@ -47,7 +47,7 @@ def login_view(request):
 
 def logout_view(request):
     logout(request)
-    return redirect('app/home.html')
+    return redirect('home')
 def home_view(request):
     return render(request, 'app/home.html')
 
