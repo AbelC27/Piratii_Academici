@@ -6,6 +6,7 @@ class Problem(models.Model):
     question = models.CharField(max_length=255)
     answer = models.CharField(max_length=255)
     difficulty = models.CharField(max_length=50)
+    solved_by = models.ManyToManyField('auth.User', related_name='solved_problems', blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     def __str__(self):
         return f"{self.question} = {self.answer} (Difficulty: {self.difficulty})"

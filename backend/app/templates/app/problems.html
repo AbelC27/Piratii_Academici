@@ -1,0 +1,466 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Math Problems - PBMate{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>🧮 Math Problems</h1>
+        <p>Solve these arithmetic problems and get instant feedback!</p>
+    </div>
+
+    {% if not problems %}
+    <div class="card">
+        <div class="card-body">
+            <p>No problems available yet. Check back later!</p>
+        </div>
+    </div>
+    {% else %}
+    <div class="problems-grid">
+        {% for problem in problems %}
+        <div class="problem-card {% if problem.id in solved_ids %}problem-card-solved{% endif %}" data-problem-id="{{ problem.id }}">
+            <div class="problem-header">
+                <span class="problem-number">#{{ problem.id }}</span>
+                <span class="difficulty-badge difficulty-{{ problem.difficulty|lower }}">
+                    {{ problem.difficulty }}
+                </span>
+                {% if problem.id in solved_ids %}
+                <span class="solved-badge">✓ Solved</span>
+                {% endif %}
+            </div>
+            
+            <div class="problem-question">
+                <p class="question-text">{{ problem.question }}</p>
+            </div>
+            
+            <div class="problem-input">
+                <input 
+                    type="number" 
+                    class="answer-input" 
+                    placeholder="Your answer..."
+                    id="answer-{{ problem.id }}"
+                    {% if problem.id in solved_ids %}value="{{ problem.answer }}" disabled{% endif %}
+                >
+                <div class="button-container" id="button-container-{{ problem.id }}">
+                    <button 
+                        class="btn {% if problem.id in solved_ids %}btn-secondary{% else %}btn-primary{% endif %} check-btn" 
+                        onclick="checkAnswer({{ problem.id }})"
+                        id="check-btn-{{ problem.id }}"
+                        {% if problem.id in solved_ids %}disabled{% endif %}
+                    >
+                        {% if problem.id in solved_ids %}✓ Solved{% else %}Check{% endif %}
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .page-header {
+        text-align: center;
+        margin-bottom: 3rem;
+    }
+    
+    .page-header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+        color: var(--text-primary);
+    }
+    
+    .page-header p {
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+    }
+    
+    .problems-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+        margin-top: 2rem;
+        align-items: start;
+    }
+    
+    .problem-card {
+        background: var(--surface);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        box-shadow: var(--shadow);
+        transition: transform 0.2s, box-shadow 0.2s, border 0.3s, background 0.3s;
+        border: 1.5px solid #4e4e4e;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+    
+    .problem-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg);
+    }
+    
+    .problem-card-correct {
+        border-color: #10b981 !important;
+        border-width: 3px !important;
+        background: linear-gradient(to bottom right, #ffffff, #d1fae5);
+    }
+    
+    .problem-card-incorrect {
+        border-color: #ef4444 !important;
+        border-width: 3px !important;
+        background: linear-gradient(to bottom right, #ffffff, #fee2e2);
+    }
+    
+    .problem-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .problem-number {
+        font-weight: 600;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+    
+    .difficulty-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 1rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .solved-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 1rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background-color: #10b981;
+        color: white;
+        margin-left: auto;
+    }
+    
+    .problem-card-solved {
+        border-width: 4px !important;
+        border-color: #059669 !important;
+        background: linear-gradient(to bottom right, #ffffff, #d1fae5);
+        opacity: 0.9;
+    }
+    
+    .difficulty-easy {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+    
+    .difficulty-medium {
+        background-color: #fef3c7;
+        color: #92400e;
+    }
+    
+    .difficulty-hard {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+    
+    .problem-question {
+        margin-bottom: 1.5rem;
+    }
+    
+    .question-text {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        text-align: center;
+        padding: 1rem;
+        background-color: var(--background);
+        border-radius: 0.5rem;
+    }
+    
+    .problem-input {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .answer-input {
+        flex: 1;
+        padding: 0.75rem;
+        border: 2px solid var(--border-color);
+        border-radius: 0.5rem;
+        font-size: 1rem;
+        outline: none;
+        transition: border-color 0.2s;
+    }
+    
+    .answer-input:focus {
+        border-color: var(--primary-color);
+    }
+    
+    .button-container {
+        display: flex;
+        gap: 0.5rem;
+        min-width: 140px;
+    }
+    
+    .check-btn {
+        padding: 0.75rem 1.5rem;
+        white-space: nowrap;
+        flex: 1;
+    }
+    
+    .reveal-btn {
+        padding: 0.75rem 1rem;
+        white-space: nowrap;
+        flex: 1;
+        background-color: #f59e0b;
+        border: none;
+        border-radius: 0.5rem;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    
+    .reveal-btn:hover {
+        background-color: #d97706;
+    }
+    
+    .feedback {
+        padding: 1rem;
+        border-radius: 0.5rem;
+        font-weight: 500;
+        text-align: center;
+        animation: slideIn 0.3s ease-out;
+    }
+    
+    .feedback.correct {
+        background-color: #d1fae5;
+        color: #065f46;
+        border: 2px solid #10b981;
+    }
+    
+    .feedback.incorrect {
+        background-color: #fee2e2;
+        color: #991b1b;
+        border: 2px solid #ef4444;
+    }
+    
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .feedback-message {
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .correct-answer {
+        font-size: 0.9rem;
+        opacity: 0.8;
+        margin-top: 0.5rem;
+    }
+    
+    .correct-answer.revealed {
+        animation: slideIn 0.3s ease-out;
+        padding: 0.75rem;
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 0.375rem;
+        opacity: 1;
+    }
+    
+    .feedback .btn-reveal {
+        background-color: rgba(255, 255, 255, 0.9);
+        color: #991b1b;
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        padding: 0.5rem 1.25rem;
+        border-radius: 0.375rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-top: 0.75rem;
+    }
+    
+    .feedback .btn-reveal:hover:not(:disabled) {
+        background-color: white;
+        border-color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .feedback .btn-reveal:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    
+    @media (max-width: 768px) {
+        .problems-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .page-header h1 {
+            font-size: 2rem;
+        }
+    }
+</style>
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+async function checkAnswer(problemId) {
+    const input = document.getElementById(`answer-${problemId}`);
+    const feedback = document.getElementById(`feedback-${problemId}`);
+    const button = event.target;
+    
+    const answer = input.value.trim();
+    
+    if (!answer) {
+        showFeedback(feedback, false, 'Please enter an answer!');
+        return;
+    }
+    
+    // Disable button during request
+    button.disabled = true;
+    button.textContent = 'Checking...';
+    
+    try {
+        const response = await fetch('{% url "check_answer" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                problem_id: problemId,
+                answer: answer
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            const problemCard = document.querySelector(`[data-problem-id="${problemId}"]`);
+            
+            if (data.correct) {
+                // No popup for correct answers, just visual feedback
+                input.disabled = true;
+                button.textContent = '✓ Solved';
+                button.classList.remove('btn-primary');
+                button.classList.add('btn-secondary');
+                // Add green border to card
+                problemCard.classList.add('problem-card-correct');
+                problemCard.classList.remove('problem-card-incorrect');
+                
+                // Mark as solved - add badge and solved styling
+                problemCard.classList.add('problem-card-solved');
+                const problemHeader = problemCard.querySelector('.problem-header');
+                if (!problemHeader.querySelector('.solved-badge')) {
+                    const solvedBadge = document.createElement('span');
+                    solvedBadge.className = 'solved-badge';
+                    solvedBadge.textContent = '✓ Solved';
+                    problemHeader.appendChild(solvedBadge);
+                }
+                
+                // Remove reveal button if it exists
+                const buttonContainer = document.getElementById(`button-container-${problemId}`);
+                const revealBtn = buttonContainer.querySelector('.reveal-btn');
+                if (revealBtn) {
+                    revealBtn.remove();
+                }
+            } else {
+                // For incorrect answers, split the button and add reveal button
+                button.textContent = 'Try Again';
+                button.disabled = false;
+                button.classList.remove('btn-secondary');
+                button.classList.add('btn-primary');
+                
+                // Add red border to card
+                problemCard.classList.add('problem-card-incorrect');
+                problemCard.classList.remove('problem-card-correct');
+                
+                // Add reveal button if it doesn't exist
+                const buttonContainer = document.getElementById(`button-container-${problemId}`);
+                if (!buttonContainer.querySelector('.reveal-btn')) {
+                    const revealBtn = document.createElement('button');
+                    revealBtn.className = 'btn reveal-btn';
+                    revealBtn.textContent = 'Reveal';
+                    revealBtn.onclick = () => revealAnswer(problemId, data.correct_answer);
+                    buttonContainer.appendChild(revealBtn);
+                }
+            }
+        } else {
+            showFeedback(feedback, false, data.error || 'An error occurred');
+        }
+    } catch (error) {
+        showFeedback(feedback, false, 'Connection error. Please try again.');
+    } finally {
+        if (button.textContent === 'Checking...') {
+            button.disabled = false;
+            button.textContent = 'Check';
+        }
+    }
+}
+
+function revealAnswer(problemId, correctAnswer) {
+    const input = document.getElementById(`answer-${problemId}`);
+    const buttonContainer = document.getElementById(`button-container-${problemId}`);
+    const revealBtn = buttonContainer.querySelector('.reveal-btn');
+    
+    // Fill in the correct answer
+    input.value = correctAnswer;
+    input.disabled = true;
+    
+    // Update buttons
+    const checkBtn = document.getElementById(`check-btn-${problemId}`);
+    checkBtn.textContent = '✓ Revealed';
+    checkBtn.disabled = true;
+    
+    // Remove reveal button
+    if (revealBtn) {
+        revealBtn.remove();
+    }
+}
+
+// Allow Enter key to submit
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.answer-input').forEach(input => {
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const problemId = this.id.replace('answer-', '');
+                checkAnswer(problemId);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
