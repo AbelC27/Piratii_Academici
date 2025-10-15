@@ -1,0 +1,453 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Admin Dashboard - PBMate{% endblock %}
+
+{% block content %}
+<style>
+    .container {
+        max-width: 1400px;
+        width: 100%;
+    }
+
+    .admin-header {
+        text-align: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 3px solid #667eea;
+        animation: fadeInDown 0.5s ease-out;
+    }
+
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .admin-header h1 {
+        color: #333;
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .admin-header p {
+        color: #666;
+        font-size: 1rem;
+    }
+
+    .stats-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+        animation: fadeIn 0.6s ease-out 0.2s both;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .stat-card h3 {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+        font-weight: bold;
+    }
+
+    .stat-card p {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        font-weight: 500;
+    }
+
+    .search-box {
+        margin-bottom: 1.5rem;
+        animation: fadeIn 0.6s ease-out 0.3s both;
+    }
+
+    .search-box input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background: white;
+    }
+
+    .search-box input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .users-table-wrapper {
+        overflow-x: auto;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        animation: fadeIn 0.6s ease-out 0.4s both;
+    }
+
+    .users-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .users-table thead {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .users-table th {
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+    }
+
+    .users-table tbody tr {
+        border-bottom: 1px solid #eee;
+        transition: background-color 0.2s ease;
+    }
+
+    .users-table tbody tr:hover {
+        background-color: #f8f9ff;
+    }
+
+    .users-table tbody tr:last-child {
+        border-bottom: none;
+    }
+
+    .users-table td {
+        padding: 1rem;
+        color: #333;
+        font-size: 0.9rem;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 0.35rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .badge-admin {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+    }
+
+    .badge-superuser {
+        background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+        color: white;
+    }
+
+    .badge-user {
+        background: #e9ecef;
+        color: #6c757d;
+    }
+
+    .badge-active {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+
+    .badge-inactive {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-action {
+        padding: 0.4rem 0.8rem;
+        border: none;
+        border-radius: 5px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+        white-space: nowrap;
+    }
+
+    .btn-edit {
+        background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        color: white;
+    }
+
+    .btn-edit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(23, 162, 184, 0.4);
+    }
+
+    .btn-promote {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+    }
+
+    .btn-promote:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+    }
+
+    .btn-demote {
+        background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+        color: white;
+    }
+
+    .btn-demote:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+    }
+
+    .btn-delete {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        color: white;
+    }
+
+    .btn-delete:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+    }
+
+    .password-field {
+        font-family: 'Courier New', monospace;
+        color: #999;
+        font-size: 0.75rem;
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        cursor: help;
+    }
+
+    .no-users {
+        text-align: center;
+        padding: 3rem;
+        color: #666;
+        font-size: 1.1rem;
+    }
+
+    .user-id {
+        font-weight: 600;
+        color: #667eea;
+    }
+
+    .email-field {
+        color: #666;
+        font-size: 0.85rem;
+    }
+</style>
+
+<div class="admin-header">
+    <h1>👨‍💼 Admin Dashboard</h1>
+    <p>Manage all users and their permissions</p>
+</div>
+
+<!-- Statistics Cards -->
+<div class="stats-container">
+    <div class="stat-card">
+        <h3>{{ total_users }}</h3>
+        <p>📊 Total Users</p>
+    </div>
+    <div class="stat-card">
+        <h3 id="adminCount">0</h3>
+        <p>⭐ Admin Users</p>
+    </div>
+    <div class="stat-card">
+        <h3 id="activeCount">0</h3>
+        <p>✓ Active Users</p>
+    </div>
+</div>
+
+<!-- Search Box -->
+<div class="search-box">
+    <input type="text" id="searchInput" placeholder="🔍 Search users by username or email..." onkeyup="filterUsers()">
+</div>
+
+<!-- Users Table -->
+<div class="users-table-wrapper">
+    {% if users %}
+    <table class="users-table" id="usersTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Password Hash</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Joined</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user_obj in users %}
+            <tr>
+                <td><span class="user-id">#{{ user_obj.id }}</span></td>
+                <td><strong>{{ user_obj.username }}</strong></td>
+                <td class="email-field">{{ user_obj.email|default:"No email" }}</td>
+                <td>
+                    <span class="password-field" title="{{ user_obj.password }}">
+                        {{ user_obj.password|truncatechars:15 }}
+                    </span>
+                </td>
+                <td>
+                    {% if user_obj.is_superuser %}
+                        <span class="badge badge-superuser">👑 Superuser</span>
+                    {% elif user_obj.is_staff %}
+                        <span class="badge badge-admin">⭐ Admin</span>
+                    {% else %}
+                        <span class="badge badge-user">👤 User</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if user_obj.is_active %}
+                        <span class="badge badge-active">✓ Active</span>
+                    {% else %}
+                        <span class="badge badge-inactive">✗ Inactive</span>
+                    {% endif %}
+                </td>
+                <td>{{ user_obj.date_joined|date:"M d, Y" }}</td>
+                <td>
+                    <div class="action-buttons">
+                        <!-- Edit Button -->
+                        <a href="{% url 'edit_user' user_obj.id %}" class="btn-action btn-edit" title="Edit User">
+                            ✏️ Edit
+                        </a>
+                        
+                        <!-- Promote/Demote Admin Button -->
+                        {% if user_obj.is_staff %}
+                            <form method="POST" action="{% url 'demote_admin' user_obj.id %}" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-action btn-demote" title="Remove Admin Privileges" 
+                                        onclick="return confirm('Remove admin privileges from {{ user_obj.username }}?')">
+                                    ⬇️ Demote
+                                </button>
+                            </form>
+                        {% else %}
+                            <form method="POST" action="{% url 'promote_admin' user_obj.id %}" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-action btn-promote" title="Make Admin" 
+                                        onclick="return confirm('Make {{ user_obj.username }} an admin?')">
+                                    ⬆️ Promote
+                                </button>
+                            </form>
+                        {% endif %}
+                        
+                        <!-- Delete Button -->
+                        <form method="POST" action="{% url 'delete_user' user_obj.id %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-action btn-delete" title="Delete User" 
+                                    onclick="return confirm('⚠️ Are you sure you want to delete {{ user_obj.username }}? This action cannot be undone!')">
+                                🗑️ Delete
+                            </button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="no-users">
+        <p>📭 No users found in the database.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    // Calculate statistics on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const table = document.getElementById('usersTable');
+        if (table) {
+            const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+            let adminCount = 0;
+            let activeCount = 0;
+            
+            for (let i = 0; i < rows.length; i++) {
+                const roleBadge = rows[i].getElementsByTagName('td')[4];
+                const statusBadge = rows[i].getElementsByTagName('td')[5];
+                
+                // Count admins (check for Admin or Superuser badge)
+                if (roleBadge && (roleBadge.textContent.includes('Admin') || roleBadge.textContent.includes('Superuser'))) {
+                    adminCount++;
+                }
+                
+                // Count active users
+                if (statusBadge && statusBadge.textContent.includes('Active')) {
+                    activeCount++;
+                }
+            }
+            
+            document.getElementById('adminCount').textContent = adminCount;
+            document.getElementById('activeCount').textContent = activeCount;
+        }
+    });
+
+    function filterUsers() {
+        const input = document.getElementById('searchInput');
+        const filter = input.value.toLowerCase();
+        const table = document.getElementById('usersTable');
+        const rows = table.getElementsByTagName('tr');
+
+        for (let i = 1; i < rows.length; i++) {
+            const username = rows[i].getElementsByTagName('td')[1];
+            const email = rows[i].getElementsByTagName('td')[2];
+            
+            if (username || email) {
+                const usernameText = username.textContent || username.innerText;
+                const emailText = email.textContent || email.innerText;
+                
+                if (usernameText.toLowerCase().indexOf(filter) > -1 || 
+                    emailText.toLowerCase().indexOf(filter) > -1) {
+                    rows[i].style.display = '';
+                } else {
+                    rows[i].style.display = 'none';
+                }
+            }
+        }
+    }
+</script>
+{% endblock %}

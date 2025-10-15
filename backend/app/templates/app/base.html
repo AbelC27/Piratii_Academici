@@ -426,6 +426,9 @@
             <a href="/problems" class="nav-link">Problems</a>
             <a href="/leaderboard" class="nav-link">Leaderboard</a>
             <a href="/problem_history" class="nav-link">History</a>
+            {% if user.is_authenticated and user.is_staff %}
+                <a href="{% url 'admin' %}" class="nav-link" style="background: linear-gradient(135deg, rgba(255, 193, 7, 0.2) 0%, rgba(255, 152, 0, 0.2) 100%);">Admin 👑</a>
+            {% endif %}
         </div>
         <div class="navbar-links">
             {% if user.is_authenticated %}

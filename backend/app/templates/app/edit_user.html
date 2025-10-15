@@ -1,0 +1,243 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Edit User - {{ user_to_edit.username }} - PBMate{% endblock %}
+
+{% block content %}
+<style>
+    .container {
+        max-width: 600px;
+        width: 100%;
+    }
+
+    .edit-header {
+        text-align: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 3px solid #667eea;
+    }
+
+    .edit-header h1 {
+        color: #333;
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .edit-header p {
+        color: #666;
+        font-size: 1rem;
+    }
+
+    .user-info-card {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        padding: 1rem;
+        border-radius: 10px;
+        margin-bottom: 1.5rem;
+        border: 2px solid rgba(102, 126, 234, 0.2);
+    }
+
+    .user-info-card p {
+        margin: 0.5rem 0;
+        color: #333;
+        font-size: 0.9rem;
+    }
+
+    .user-info-card strong {
+        color: #667eea;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #333;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        box-sizing: border-box;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .help-text {
+        font-size: 0.8rem;
+        color: #666;
+        margin-top: 0.25rem;
+        font-style: italic;
+    }
+
+    .button-group {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+
+    .btn {
+        flex: 1;
+        padding: 0.75rem;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        text-align: center;
+        display: inline-block;
+    }
+
+    .btn-save {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .btn-save:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-cancel {
+        background: #e9ecef;
+        color: #333;
+    }
+
+    .btn-cancel:hover {
+        background: #dee2e6;
+        transform: translateY(-2px);
+    }
+
+    .warning-box {
+        background: #fff3cd;
+        border: 2px solid #ffc107;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .warning-box p {
+        margin: 0;
+        color: #856404;
+        font-size: 0.9rem;
+    }
+
+    .warning-box strong {
+        color: #856404;
+    }
+</style>
+
+<div class="edit-header">
+    <h1>✏️ Edit User</h1>
+    <p>Update user information for <strong>{{ user_to_edit.username }}</strong></p>
+</div>
+
+<!-- Current User Info -->
+<div class="user-info-card">
+    <p><strong>User ID:</strong> #{{ user_to_edit.id }}</p>
+    <p><strong>Current Username:</strong> {{ user_to_edit.username }}</p>
+    <p><strong>Current Email:</strong> {{ user_to_edit.email|default:"Not set" }}</p>
+    <p><strong>Account Status:</strong> 
+        {% if user_to_edit.is_active %}
+            <span style="color: #28a745;">✓ Active</span>
+        {% else %}
+            <span style="color: #dc3545;">✗ Inactive</span>
+        {% endif %}
+    </p>
+    <p><strong>Role:</strong> 
+        {% if user_to_edit.is_superuser %}
+            <span style="color: #ffc107;">👑 Superuser</span>
+        {% elif user_to_edit.is_staff %}
+            <span style="color: #28a745;">⭐ Admin</span>
+        {% else %}
+            <span style="color: #6c757d;">👤 User</span>
+        {% endif %}
+    </p>
+    <p><strong>Date Joined:</strong> {{ user_to_edit.date_joined|date:"F d, Y at h:i A" }}</p>
+</div>
+
+<!-- Warning Box -->
+<div class="warning-box">
+    <p><strong>⚠️ Note:</strong> Leave password field empty if you don't want to change it. Only fill it if you want to set a new password.</p>
+</div>
+
+<!-- Edit Form -->
+<form method="POST">
+    {% csrf_token %}
+    
+    <div class="form-group">
+        <label for="username">Username</label>
+        <input 
+            type="text" 
+            id="username" 
+            name="username" 
+            class="form-control" 
+            value="{{ user_to_edit.username }}"
+            required
+            minlength="3"
+            pattern="[a-zA-Z0-9_]+"
+            title="Username can only contain letters, numbers, and underscores"
+        >
+        <div class="help-text">3-150 characters. Letters, numbers, and underscores only.</div>
+    </div>
+
+    <div class="form-group">
+        <label for="email">Email Address</label>
+        <input 
+            type="email" 
+            id="email" 
+            name="email" 
+            class="form-control" 
+            value="{{ user_to_edit.email }}"
+            placeholder="user@example.com"
+        >
+        <div class="help-text">Optional. Valid email address format.</div>
+    </div>
+
+    <div class="form-group">
+        <label for="password">New Password</label>
+        <input 
+            type="password" 
+            id="password" 
+            name="password" 
+            class="form-control" 
+            placeholder="Leave empty to keep current password"
+            minlength="8"
+        >
+        <div class="help-text">Optional. Minimum 8 characters. Leave empty to keep current password.</div>
+    </div>
+
+    <div class="button-group">
+        <button type="submit" class="btn btn-save">💾 Save Changes</button>
+        <a href="{% url 'admin' %}" class="btn btn-cancel">❌ Cancel</a>
+    </div>
+</form>
+
+<script>
+    // Confirmation before saving
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const username = document.getElementById('username').value;
+        const confirmed = confirm(`Are you sure you want to update user "${username}"?`);
+        if (!confirmed) {
+            e.preventDefault();
+        }
+    });
+</script>
+
+{% endblock %}

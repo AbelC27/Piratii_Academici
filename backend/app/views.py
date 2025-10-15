@@ -64,11 +64,97 @@ def home_view(request):
 
 
 # Casi
+from django.contrib.auth.decorators import login_required, user_passes_test
+
+def is_admin(user):
+    return user.is_staff or user.is_superuser
+
+@login_required
+@user_passes_test(is_admin)
+def admin_view(request):
+    users = AuthUser.objects.all()
+    total_users = users.count()
+    return render(request, 'app/admin.html', {
+        'users': users,
+        'total_users': total_users
+        })
 
 
+@login_required
+@user_passes_test(is_admin)
+def delete_user(request, user_id):
+    if not request.user.is_authenticated or not is_admin(request.user):
+        return HttpResponse("Unauthorized", status=401)
+    try:
+        user_to_delete = AuthUser.objects.get(id=user_id)
+        if user_to_delete != request.user:  # Prevent self-deletion
+            user_to_delete.delete()
+            messages.success(request, f'User {user_to_delete.username} has been deleted.')
+        else:
+            messages.error(request, 'You cannot delete your own account.')
+    except AuthUser.DoesNotExist:
+        messages.error(request, 'User does not exist.')
+    return redirect('admin')
 
 
+@login_required
+@user_passes_test(is_admin)
+def edit_user(request, user_id):
+    if not request.user.is_authenticated or not is_admin(request.user):
+        return HttpResponse("Unauthorized", status=401)
+    try:
+        user_to_edit = AuthUser.objects.get(id=user_id)
+        if request.method == 'GET':
+            return render(request, 'app/edit_user.html', {'user_to_edit': user_to_edit})
+        if request.method == 'POST':
+            username = request.POST.get('username')
+            email = request.POST.get('email')
+            if username:
+                user_to_edit.username = username
+            if email:
+                user_to_edit.email = email
 
+            new_password = request.POST.get('password')
+            if new_password:
+                user_to_edit.set_password(new_password)
+            user_to_edit.save()
+            messages.success(request, f'User {user_to_edit} updated')
+            return redirect('admin')
+    except AuthUser.DoesNotExist:
+        messages.error(request, 'User does not exist.')
+    return redirect('admin')
+
+@login_required
+@user_passes_test(is_admin)
+def promote_user(request, user_id):
+    if not request.user.is_authenticated or not is_admin(request.user):
+        return HttpResponse('Unauthorized', status = 401)
+    try:
+        user_to_promote = AuthUser.objects.get(id=user_id)
+        if user_to_promote:
+            user_to_promote.is_superuser = True
+            user_to_promote.is_staff = True
+        user_to_promote.save()
+        messages.success(request, f"{user_to_promote.username} has been promoted to admin")
+    except AuthUser.DoesNotExist:
+        messages.error(request, 'User does not exist.')
+    return redirect('admin')
+
+@login_required
+@user_passes_test(is_admin)
+def demote_user(request, user_id):
+    if not request.user.is_authenticated or not is_admin(request.user):
+        return HttpResponse('Unauthorized', status = 401)
+    try:
+        user_to_demote = AuthUser.objects.get(id=user_id)
+        if user_to_demote:
+            user_to_demote.is_staff = False
+            user_to_demote.is_superuser = False
+            user_to_demote.save()
+            messages.success(request, f"{user_to_demote.username} has been demoted.")
+    except AuthUser.DoesNotExist:
+        messages.error(request, 'User does not exist')
+    return redirect('admin')
 
 
 # Codrin
