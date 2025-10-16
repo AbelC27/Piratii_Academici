@@ -25,13 +25,108 @@ def signup_view(request):
             messages.error(request, 'Please correct the errors below.')
     else:
         form = UserRegistrationForm()
-    
+
     return render(request, 'app/signup.html', {'form': form})
 
 
 def signup_success_view(request):
     return render(request, 'app/signup_success.html')
+@login_required
+def daily_challenge_view(request):
+    """View for daily challenge feature"""
+    today_challenge = DailyChallenge.get_today_challenge()
 
+    if not today_challenge:
+        messages.warning(request, 'No daily challenge available yet. Check back later!')
+        return redirect('home')
+
+    # Check if user already completed today's challenge
+    already_completed = today_challenge.is_completed_by(request.user)
+
+    # Get user's submission history for this challenge
+    user_attempts = Submission.objects.filter(
+        user=request.user,
+        problem=today_challenge.problem,
+        submitted_at__date=date.today()
+    ).order_by('-submitted_at')
+
+    # Calculate stats
+    total_completions = today_challenge.completed_by.count()
+
+    context = {
+        'challenge': today_challenge,
+        'problem': today_challenge.problem,
+        'already_completed': already_completed,
+        'user_attempts': user_attempts,
+        'total_completions': total_completions,
+        'bonus_points': today_challenge.bonus_points,
+    }
+
+    return render(request, 'app/daily_challenge.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def check_daily_challenge(request):
+    """AJAX endpoint to check daily challenge answer"""
+    try:
+        data = json.loads(request.body)
+        user_answer = data.get('answer', '').strip()
+
+        today_challenge = DailyChallenge.get_today_challenge()
+        if not today_challenge:
+            return JsonResponse({'error': 'No challenge available'}, status=404)
+
+        problem = today_challenge.problem
+
+        # Check if already completed
+        already_completed = today_challenge.is_completed_by(request.user)
+
+        # Evaluate answers
+        try:
+            correct_answer = eval(problem.answer, {"_builtins_": None}, {})
+        except:
+            correct_answer = int(problem.answer)
+
+        try:
+            user_answer_value = int(user_answer)
+        except ValueError:
+            return JsonResponse({
+                'correct': False,
+                'message': 'Please enter a valid number',
+                'correct_answer': None
+            })
+
+        is_correct = (user_answer_value == correct_answer)
+
+        # Save submission
+        Submission.objects.create(
+            user=request.user,
+            problem=problem,
+            submitted_answer=user_answer,
+            was_correct=is_correct
+        )
+
+        # Mark as completed if correct and not already completed
+        if is_correct and not already_completed:
+            today_challenge.completed_by.add(request.user)
+            problem.solved_by.add(request.user)
+            message = f'🎉 Correct! Daily Challenge completed! +{today_challenge.bonus_points} bonus points!'
+        elif is_correct and already_completed:
+            message = '✅ Correct! (Already completed today)'
+        else:
+            message = '❌ Incorrect. Try again!'
+
+        return JsonResponse({
+            'correct': is_correct,
+            'message': message,
+            'correct_answer': correct_answer if not is_correct else None,
+            'already_completed': already_completed or is_correct,
+            'bonus_points': today_challenge.bonus_points if (is_correct and not already_completed) else 0
+        })
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 # Sergiu
 def login_view(request):
@@ -51,117 +146,44 @@ def login_view(request):
         form = LoginForm()
     return render(request, 'app/login.html', {'form': form})
 
+
 def logout_view(request):
     logout(request)
     return redirect('home')
+
+
 def home_view(request):
     return render(request, 'app/home.html')
 
-@login_required
-def daily_challenge_view(request):
-    """View for daily challenge feature"""
-    today_challenge = DailyChallenge.get_today_challenge()
-    
-    if not today_challenge:
-        messages.warning(request, 'No daily challenge available yet. Check back later!')
-        return redirect('home')
-    
-    # Check if user already completed today's challenge
-    already_completed = today_challenge.is_completed_by(request.user)
-    
-    # Get user's submission history for this challenge
-    user_attempts = Submission.objects.filter(
-        user=request.user,
-        problem=today_challenge.problem,
-        submitted_at__date=date.today()
-    ).order_by('-submitted_at')
-    
-    # Calculate stats
-    total_completions = today_challenge.completed_by.count()
-    
-    context = {
-        'challenge': today_challenge,
-        'problem': today_challenge.problem,
-        'already_completed': already_completed,
-        'user_attempts': user_attempts,
-        'total_completions': total_completions,
-        'bonus_points': today_challenge.bonus_points,
-    }
-    
-    return render(request, 'app/daily_challenge.html', context)
+def profile_view(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    return render(request, 'app/profile.html', {'user': request.user})
+
 
 
 @login_required
-@require_http_methods(["POST"])
-def check_daily_challenge(request):
-    """AJAX endpoint to check daily challenge answer"""
-    try:
-        data = json.loads(request.body)
-        user_answer = data.get('answer', '').strip()
-        
-        today_challenge = DailyChallenge.get_today_challenge()
-        if not today_challenge:
-            return JsonResponse({'error': 'No challenge available'}, status=404)
-        
-        problem = today_challenge.problem
-        
-        # Check if already completed
-        already_completed = today_challenge.is_completed_by(request.user)
-        
-        # Evaluate answers
-        try:
-            correct_answer = eval(problem.answer, {"__builtins__": None}, {})
-        except:
-            correct_answer = int(problem.answer)
-        
-        try:
-            user_answer_value = int(user_answer)
-        except ValueError:
-            return JsonResponse({
-                'correct': False,
-                'message': 'Please enter a valid number',
-                'correct_answer': None
-            })
-        
-        is_correct = (user_answer_value == correct_answer)
-        
-        # Save submission
-        Submission.objects.create(
-            user=request.user,
-            problem=problem,
-            submitted_answer=user_answer,
-            was_correct=is_correct
-        )
-        
-        # Mark as completed if correct and not already completed
-        if is_correct and not already_completed:
-            today_challenge.completed_by.add(request.user)
-            problem.solved_by.add(request.user)
-            message = f'🎉 Correct! Daily Challenge completed! +{today_challenge.bonus_points} bonus points!'
-        elif is_correct and already_completed:
-            message = '✅ Correct! (Already completed today)'
-        else:
-            message = '❌ Incorrect. Try again!'
-        
-        return JsonResponse({
-            'correct': is_correct,
-            'message': message,
-            'correct_answer': correct_answer if not is_correct else None,
-            'already_completed': already_completed or is_correct,
-            'bonus_points': today_challenge.bonus_points if (is_correct and not already_completed) else 0
-        })
-        
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+def edit_profile_view(request):
+    user = request.user
 
+    if request.method == "POST":
+        username = request.POST.get("username")
+        email = request.POST.get("email")
+        password = request.POST.get("password")
 
+        if username:
+            user.username = username
+        if email:
+            user.email = email
+        if password:
+            user.set_password(password)
 
+        user.save()
+        messages.success(request, "Profilul tău a fost actualizat cu succes!")
+        return redirect("profile")
 
-
+    return render(request, "app/edit_profile.html", {"user": user})
 # Abel
-
-
-
 
 
 
@@ -169,8 +191,10 @@ def check_daily_challenge(request):
 # Casi
 from django.contrib.auth.decorators import login_required, user_passes_test
 
+
 def is_admin(user):
     return user.is_staff or user.is_superuser
+
 
 @login_required
 @user_passes_test(is_admin)
@@ -180,7 +204,7 @@ def admin_view(request):
     return render(request, 'app/admin.html', {
         'users': users,
         'total_users': total_users
-        })
+    })
 
 
 @login_required
@@ -227,11 +251,12 @@ def edit_user(request, user_id):
         messages.error(request, 'User does not exist.')
     return redirect('admin')
 
+
 @login_required
 @user_passes_test(is_admin)
 def promote_user(request, user_id):
     if not request.user.is_authenticated or not is_admin(request.user):
-        return HttpResponse('Unauthorized', status = 401)
+        return HttpResponse('Unauthorized', status=401)
     try:
         user_to_promote = AuthUser.objects.get(id=user_id)
         if user_to_promote:
@@ -243,11 +268,12 @@ def promote_user(request, user_id):
         messages.error(request, 'User does not exist.')
     return redirect('admin')
 
+
 @login_required
 @user_passes_test(is_admin)
 def demote_user(request, user_id):
     if not request.user.is_authenticated or not is_admin(request.user):
-        return HttpResponse('Unauthorized', status = 401)
+        return HttpResponse('Unauthorized', status=401)
     try:
         user_to_demote = AuthUser.objects.get(id=user_id)
         if user_to_demote:
@@ -258,6 +284,7 @@ def demote_user(request, user_id):
     except AuthUser.DoesNotExist:
         messages.error(request, 'User does not exist')
     return redirect('admin')
+
 
 @login_required
 def leaderboard_view(request):
@@ -274,7 +301,7 @@ def leaderboard_view(request):
         leaderboard.append({
             'user': user,
             'problems_solved': correct_submission
-        })   
+        })
 
     leaderboard.sort(key=lambda x: (-x['problems_solved'], x['user'].date_joined))
     total_problems = Problem.objects.count()
@@ -283,25 +310,25 @@ def leaderboard_view(request):
         'leaderboard': leaderboard,
         'total_users': total_users,
         'total_problems': total_problems,
-        'total_solved': total_solved 
+        'total_solved': total_solved
     })
-
 
 
 # Codrin
 
 def problems_view(request):
     problems = Problem.objects.all().order_by('-created_at')
-    
+
     # Get solved problem IDs for the current user
     solved_ids = []
     if request.user.is_authenticated:
         solved_ids = list(request.user.solved_problems.values_list('id', flat=True))
-    
+
     return render(request, 'app/problems.html', {
         'problems': problems,
         'solved_ids': solved_ids
     })
+
 
 @require_http_methods(["POST"])
 def check_answer(request):
@@ -310,18 +337,18 @@ def check_answer(request):
         data = json.loads(request.body)
         problem_id = data.get('problem_id')
         user_answer = data.get('answer', '').strip()
-        
+
         if not problem_id or not user_answer:
             return JsonResponse({'error': 'Missing data'}, status=400)
-        
+
         problem = Problem.objects.get(id=problem_id)
-        
+
         # Evaluate the correct answer
         try:
-            correct_answer = eval(problem.answer, {"__builtins__": None}, {})
+            correct_answer = eval(problem.answer, {"_builtins_": None}, {})
         except:
             correct_answer = int(problem.answer)  # Fallback if already a number
-        
+
         # Evaluate user answer
         try:
             user_answer_value = int(user_answer)
@@ -331,9 +358,9 @@ def check_answer(request):
                 'message': 'Please enter a valid number',
                 'correct_answer': correct_answer
             })
-        
+
         is_correct = (user_answer_value == correct_answer)
-        
+
         # Save submission if user is authenticated
         if request.user.is_authenticated:
             Submission.objects.create(
@@ -342,17 +369,17 @@ def check_answer(request):
                 submitted_answer=user_answer,
                 was_correct=is_correct
             )
-            
+
             # Add user to solved_by list if correct and not already there
             if is_correct and request.user not in problem.solved_by.all():
                 problem.solved_by.add(request.user)
-        
+
         return JsonResponse({
             'correct': is_correct,
             'message': '🎉 Correct!' if is_correct else '❌ Incorrect. Try again!',
             'correct_answer': correct_answer if not is_correct else None
         })
-        
+
     except Problem.DoesNotExist:
         return JsonResponse({'error': 'Problem not found'}, status=404)
     except Exception as e:
