@@ -1,10 +1,15 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User as AuthUser
-from .forms import LoginForm
 from django.contrib import messages
-from django.http import HttpResponse
-from .forms import UserRegistrationForm
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.http import require_http_methods
+from datetime import date
+import json
+
+from .forms import LoginForm, UserRegistrationForm
+from .models import Problem, Submission, DailyChallenge
 
 
 # Andi
@@ -51,6 +56,103 @@ def logout_view(request):
     return redirect('home')
 def home_view(request):
     return render(request, 'app/home.html')
+
+@login_required
+def daily_challenge_view(request):
+    """View for daily challenge feature"""
+    today_challenge = DailyChallenge.get_today_challenge()
+    
+    if not today_challenge:
+        messages.warning(request, 'No daily challenge available yet. Check back later!')
+        return redirect('home')
+    
+    # Check if user already completed today's challenge
+    already_completed = today_challenge.is_completed_by(request.user)
+    
+    # Get user's submission history for this challenge
+    user_attempts = Submission.objects.filter(
+        user=request.user,
+        problem=today_challenge.problem,
+        submitted_at__date=date.today()
+    ).order_by('-submitted_at')
+    
+    # Calculate stats
+    total_completions = today_challenge.completed_by.count()
+    
+    context = {
+        'challenge': today_challenge,
+        'problem': today_challenge.problem,
+        'already_completed': already_completed,
+        'user_attempts': user_attempts,
+        'total_completions': total_completions,
+        'bonus_points': today_challenge.bonus_points,
+    }
+    
+    return render(request, 'app/daily_challenge.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def check_daily_challenge(request):
+    """AJAX endpoint to check daily challenge answer"""
+    try:
+        data = json.loads(request.body)
+        user_answer = data.get('answer', '').strip()
+        
+        today_challenge = DailyChallenge.get_today_challenge()
+        if not today_challenge:
+            return JsonResponse({'error': 'No challenge available'}, status=404)
+        
+        problem = today_challenge.problem
+        
+        # Check if already completed
+        already_completed = today_challenge.is_completed_by(request.user)
+        
+        # Evaluate answers
+        try:
+            correct_answer = eval(problem.answer, {"__builtins__": None}, {})
+        except:
+            correct_answer = int(problem.answer)
+        
+        try:
+            user_answer_value = int(user_answer)
+        except ValueError:
+            return JsonResponse({
+                'correct': False,
+                'message': 'Please enter a valid number',
+                'correct_answer': None
+            })
+        
+        is_correct = (user_answer_value == correct_answer)
+        
+        # Save submission
+        Submission.objects.create(
+            user=request.user,
+            problem=problem,
+            submitted_answer=user_answer,
+            was_correct=is_correct
+        )
+        
+        # Mark as completed if correct and not already completed
+        if is_correct and not already_completed:
+            today_challenge.completed_by.add(request.user)
+            problem.solved_by.add(request.user)
+            message = f'🎉 Correct! Daily Challenge completed! +{today_challenge.bonus_points} bonus points!'
+        elif is_correct and already_completed:
+            message = '✅ Correct! (Already completed today)'
+        else:
+            message = '❌ Incorrect. Try again!'
+        
+        return JsonResponse({
+            'correct': is_correct,
+            'message': message,
+            'correct_answer': correct_answer if not is_correct else None,
+            'already_completed': already_completed or is_correct,
+            'bonus_points': today_challenge.bonus_points if (is_correct and not already_completed) else 0
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 
@@ -187,10 +289,6 @@ def leaderboard_view(request):
 
 
 # Codrin
-from .models import Problem, Submission
-from django.http import JsonResponse
-from django.views.decorators.http import require_http_methods
-import json
 
 def problems_view(request):
     problems = Problem.objects.all().order_by('-created_at')

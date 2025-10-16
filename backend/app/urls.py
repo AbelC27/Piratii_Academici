@@ -9,6 +9,8 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     path('problems/', views.problems_view, name='problems'),
     path('api/check-answer/', views.check_answer, name='check_answer'),
+    path('daily-challenge/', views.daily_challenge_view, name='daily_challenge'),
+    path('api/check-daily-challenge/', views.check_daily_challenge, name='check_daily_challenge'),
     path('leaderboard/', views.leaderboard_view, name = 'leaderboard'),
     
     path('admin-dashboard/', views.admin_view, name='admin'),
