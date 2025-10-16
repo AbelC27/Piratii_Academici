@@ -1,0 +1,30 @@
+{% extends "app/base.html" %}
+
+{% block content %}
+<div class = "profile-header">
+    <h2>Profilul lui {{ user.username }}</h2>
+</div>
+
+<div class="container">
+    <div class="profile-section">
+        <p><strong>Username: {{user.username}}</strong></p>
+    </div>
+    <div class="profile-section">
+        <p><strong>Email: {{user.email}}</strong></p>
+    </div>
+
+    <div class="profile-section">
+        <p><strong>Parola: </strong>
+            <span id="password-field">************</span>
+        </p>
+
+        </div>
+            <div class="btn-group">
+            <a href="{% url 'edit_profile' %}" class="btn-modify">Modify</a>
+    </div>
+</div>
+<div class="profile-info">
+    <p>Data înregistrării: {{user.date_joined}}</p>
+    <p>Ultima autentificare: {{user.last_login}}</p>
+</div>
+{% endblock %}
