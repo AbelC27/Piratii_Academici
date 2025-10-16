@@ -12,6 +12,8 @@ urlpatterns = [
     path('daily-challenge/', views.daily_challenge_view, name='daily_challenge'),
     path('api/check-daily-challenge/', views.check_daily_challenge, name='check_daily_challenge'),
     path('leaderboard/', views.leaderboard_view, name = 'leaderboard'),
+    path('profile/', views.profile_view, name='profile'),
+    path('profile/edit/', views.edit_profile_view, name='edit_profile'),
     
     path('admin-dashboard/', views.admin_view, name='admin'),
     path('manage/edit/<int:user_id>/', views.edit_user, name='edit_user'),
