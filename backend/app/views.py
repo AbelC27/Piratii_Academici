@@ -194,6 +194,26 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 
 def is_admin(user):
     return user.is_staff or user.is_superuser
+def problem_history_view(request):
+    """Global history of solved problems (no answers shown).
+    Shows one row per (user, problem) with the latest solve time.
+    """
+    # Filter only correct submissions
+    solved_qs = Submission.objects.filter(was_correct=True)
+    # Reduce to one entry per (user, problem) by taking latest submitted_at
+    # Using values + annotate for portability across SQLite/Postgres
+    from django.db.models import Max
+    aggregated = (
+        solved_qs
+        .values('user__id', 'user__username', 'problem__id', 'problem__question')
+        .annotate(latest_solved_at=Max('submitted_at'))
+        .order_by('-latest_solved_at')
+    )
+
+    context = {
+        'entries': aggregated,
+    }
+    return render(request, 'app/problem_history.html', context)
 
 
 @login_required

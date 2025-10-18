@@ -14,6 +14,7 @@ urlpatterns = [
     path('leaderboard/', views.leaderboard_view, name = 'leaderboard'),
     path('profile/', views.profile_view, name='profile'),
     path('profile/edit/', views.edit_profile_view, name='edit_profile'),
+    path('problem_history/', views.problem_history_view, name='problem_history'),
     
     path('admin-dashboard/', views.admin_view, name='admin'),
     path('manage/edit/<int:user_id>/', views.edit_user, name='edit_user'),

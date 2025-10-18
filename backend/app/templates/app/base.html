@@ -556,7 +556,7 @@
           >🏆 Daily Challenge</a
         >
         <a href="/leaderboard" class="nav-link">Leaderboard</a>
-        <a href="/problem_history" class="nav-link">History</a>
+        <a href="{% url 'problem_history' %}" class="nav-link">History</a>
         {% if user.is_authenticated and user.is_staff %}
         <a
           href="{% url 'admin' %}"

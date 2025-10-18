@@ -12,10 +12,10 @@ from app.models import Problem
 
 # Sample problems
 problems = [
-    {"question": "5 + 3", "answer": "8", "difficulty": "Easy"},
-    {"question": "12 - 7", "answer": "5", "difficulty": "Easy"},
-    {"question": "4 * 6", "answer": "24", "difficulty": "Easy"},
-    {"question": "15 + 8 - 3", "answer": "20", "difficulty": "Medium"},
+    {"question": "5 + 6", "answer": "11", "difficulty": "Easy"},
+    {"question": "12 - 8", "answer": "4", "difficulty": "Easy"},
+    {"question": "5 * 6", "answer": "30", "difficulty": "Easy"},
+    {"question": "20 + 8 - 2", "answer": "26", "difficulty": "Medium"},
     {"question": "7 * 3 + 5", "answer": "26", "difficulty": "Medium"},
     {"question": "(8 + 2) * 3", "answer": "30", "difficulty": "Medium"},
     {"question": "25 - 15 + 10", "answer": "20", "difficulty": "Medium"},
