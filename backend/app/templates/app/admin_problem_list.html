@@ -36,6 +36,7 @@
                 <th>Question</th>
                 <th>Answer</th>
                 <th>Difficulty</th>
+                <th>Category</th>
                 <th>Created</th>
                 <th>Actions</th>
             </tr>
@@ -47,6 +48,7 @@
                 <td>{{ problem.question }}</td>
                 <td>{{ problem.answer }}</td>
                 <td><span class="difficulty-badge difficulty-{{ problem.difficulty|lower }}">{{ problem.difficulty }}</span></td>
+                <td>{{ problem.get_category_display }}</td>
                 <td>{{ problem.created_at|date:"Y-m-d H:i" }}</td>
                 <td class="actions">
                     <a href="{% url 'admin_problem_edit' problem.id %}" class="btn-edit">✏️ Edit</a>

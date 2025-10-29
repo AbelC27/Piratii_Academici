@@ -1,0 +1,295 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Speed Run! - PBMate{% endblock %}
+
+{% block content %}
+<style>
+    .speed-run-container {
+        max-width: 600px;
+        text-align: center;
+    }
+    .game-stats {
+        display: flex;
+        justify-content: space-around;
+        margin: 2rem 0;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 10px;
+    }
+    .stat-box {
+        font-size: 1.5rem;
+    }
+    .stat-box span {
+        font-weight: 700;
+        color: #667eea;
+        font-size: 2rem;
+        display: block;
+    }
+    #timer {
+        color: #dc3545 !important;
+    }
+
+    .problem-box {
+        margin: 2rem 0;
+        padding: 2rem;
+        background: #fdfdfd;
+        border: 2px solid #eee;
+        border-radius: 10px;
+    }
+    #problem-question {
+        font-size: 3rem;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 1.5rem;
+        font-family: "Courier New", monospace;
+    }
+    #answer-input {
+        width: 100%;
+        max-width: 300px;
+        padding: 1rem;
+        font-size: 1.5rem;
+        text-align: center;
+        border: 3px solid #667eea;
+        border-radius: 10px;
+        outline: none;
+        transition: all 0.3s;
+    }
+    #answer-input:focus {
+        border-color: #764ba2;
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.2);
+    }
+    #answer-input.correct {
+        border-color: #28a745;
+        animation: pulse-green 0.3s;
+    }
+    #answer-input.incorrect {
+        border-color: #dc3545;
+        animation: shake 0.3s;
+    }
+    #start-button {
+        padding: 1rem 3rem;
+        font-size: 1.2rem;
+        font-weight: bold;
+    }
+    .game-area {
+        display: none; /* Hidden by default */
+    }
+    .results-area {
+        display: none; /* Hidden by default */
+        margin-top: 2rem;
+    }
+    .results-area h2 {
+        color: #667eea;
+    }
+
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+    @keyframes pulse-green {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+</style>
+
+<div class="speed-run-container">
+    <div class="header">
+        <h1>⏱️ Speed Run!</h1>
+        <p>Solve as many 'easy' problems as you can in 60 seconds.</p>
+        <p>Your current high score: <strong id="page-high-score">{{ high_score }}</strong></p>
+    </div>
+
+    <div id="start-area">
+        <button id="start-button" class="btn">Start Game</button>
+    </div>
+
+    <div class="game-area" id="game-area">
+        <div class="game-stats">
+            <div class="stat-box">Time<span id="timer">60</span></div>
+            <div class="stat-box">Score<span id="score">0</span></div>
+        </div>
+        <div class="problem-box">
+            <div id="problem-question">Loading...</div>
+            <input type="number" id="answer-input" placeholder="Type answer + press Enter" autocomplete="off">
+        </div>
+    </div>
+
+    <div class="results-area" id="results-area">
+        <h2>Game Over!</h2>
+        <h3>Your final score: <span id="final-score">0</span></h3>
+        <p id="high-score-message"></p>
+        <button id="play-again-button" class="btn">Play Again</button>
+    </div>
+</div>
+
+<script>
+    // Game state
+    let score = 0;
+    let timer = 60;
+    let timerInterval = null;
+    let currentCorrectAnswer = null;
+
+    // --- ** THIS IS THE FIXED LINE ** ---
+    // We wrap the variable in quotes to treat it as a string, then parse it.
+    // If it fails (e.g., is empty), it will safely default to 0.
+    let originalHighScore = parseInt("{{ high_score }}", 10) || 0;
+
+    // DOM Elements
+    const startArea = document.getElementById('start-area');
+    const gameArea = document.getElementById('game-area');
+    const resultsArea = document.getElementById('results-area');
+    const startButton = document.getElementById('start-button');
+    const playAgainButton = document.getElementById('play-again-button');
+    
+    const timerDisplay = document.getElementById('timer');
+    const scoreDisplay = document.getElementById('score');
+    const problemQuestion = document.getElementById('problem-question');
+    const answerInput = document.getElementById('answer-input');
+    const finalScoreDisplay = document.getElementById('final-score');
+    const highScoreMessage = document.getElementById('high-score-message');
+    const pageHighScoreDisplay = document.getElementById('page-high-score');
+
+    // CSRF Token
+    const csrftoken = getCookie('csrftoken');
+
+    // Attach listeners
+    startButton.addEventListener('click', startGame);
+    playAgainButton.addEventListener('click', resetGame);
+    answerInput.addEventListener('keypress', handleAnswerSubmit);
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    async function loadNewProblem() {
+        try {
+            const response = await fetch("{% url 'get_generated_problem_api' %}");
+            if (!response.ok) throw new Error('Network error');
+            
+            const data = await response.json();
+            problemQuestion.textContent = data.question + " = ?";
+            currentCorrectAnswer = data.answer;
+            answerInput.value = '';
+            answerInput.focus();
+
+        } catch (error) {
+            problemQuestion.textContent = "Error loading...";
+            console.error("Failed to load problem:", error);
+        }
+    }
+
+    function handleAnswerSubmit(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const userAnswer = answerInput.value;
+            
+            if (userAnswer === currentCorrectAnswer) {
+                score++;
+                scoreDisplay.textContent = score;
+                flashInput('correct');
+                loadNewProblem(); // Load next problem
+            } else {
+                flashInput('incorrect');
+            }
+        }
+    }
+
+    function flashInput(status) {
+        answerInput.classList.add(status);
+        setTimeout(() => {
+            answerInput.classList.remove(status);
+            if (status === 'incorrect') {
+                answerInput.value = ''; // Clear wrong answer
+            }
+        }, 300);
+    }
+
+    function startGame() {
+        // Reset state
+        score = 0;
+        timer = 60;
+        scoreDisplay.textContent = score;
+        timerDisplay.textContent = timer;
+        
+        // Show/hide areas
+        startArea.style.display = 'none';
+        resultsArea.style.display = 'none';
+        gameArea.style.display = 'block';
+        answerInput.disabled = false;
+        
+        loadNewProblem();
+        
+        // Start timer
+        timerInterval = setInterval(() => {
+            timer--;
+            timerDisplay.textContent = timer;
+            if (timer <= 0) {
+                endGame();
+            }
+        }, 1000);
+    }
+
+    function endGame() {
+        clearInterval(timerInterval);
+        answerInput.disabled = true;
+        gameArea.style.display = 'none';
+        resultsArea.style.display = 'block';
+        finalScoreDisplay.textContent = score;
+        
+        saveScore(score);
+    }
+
+    async function saveScore(finalScore) {
+        try {
+            const response = await fetch("{% url 'save_speed_run' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ score: finalScore })
+            });
+
+            if (!response.ok) {
+                throw new Error('Server error while saving score.');
+            }
+
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                if (data.score_saved > originalHighScore) {
+                    highScoreMessage.textContent = `New High Score! (Your previous was ${originalHighScore})`;
+                    // Update the scores on the page
+                    originalHighScore = data.score_saved;
+                    pageHighScoreDisplay.textContent = data.score_saved;
+                } else {
+                    highScoreMessage.textContent = `Your high score is ${data.high_score}.`;
+                }
+            } else {
+                 highScoreMessage.textContent = "Could not save score: " + (data.error || 'Unknown error');
+            }
+        } catch (error) {
+            console.error("Failed to save score:", error);
+            highScoreMessage.textContent = "Could not save score.";
+        }
+    }
+
+    function resetGame() {
+        resultsArea.style.display = 'none';
+        startArea.style.display = 'block';
+    }
+
+</script>
+{% endblock %}

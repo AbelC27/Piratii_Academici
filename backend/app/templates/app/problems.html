@@ -3,61 +3,6 @@
 {% block title %}Math Problems - PBMate{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="page-header">
-        <h1>🧮 Math Problems</h1>
-        <p>Solve these arithmetic problems and get instant feedback!</p>
-    </div>
-
-    {% if not problems %}
-    <div class="card">
-        <div class="card-body">
-            <p>No problems available yet. Check back later!</p>
-        </div>
-    </div>
-    {% else %}
-    <div class="problems-grid">
-        {% for problem in problems %}
-        <div class="problem-card {% if problem.id in solved_ids %}problem-card-solved{% endif %}" data-problem-id="{{ problem.id }}">
-            <div class="problem-header">
-                <span class="problem-number">#{{ problem.id }}</span>
-                <span class="difficulty-badge difficulty-{{ problem.difficulty|lower }}">
-                    {{ problem.difficulty }}
-                </span>
-                {% if problem.id in solved_ids %}
-                <span class="solved-badge">✓ Solved</span>
-                {% endif %}
-            </div>
-            
-            <div class="problem-question">
-                <p class="question-text">{{ problem.question }}</p>
-            </div>
-            
-            <div class="problem-input">
-                <input 
-                    type="number" 
-                    class="answer-input" 
-                    placeholder="Your answer..."
-                    id="answer-{{ problem.id }}"
-                    {% if problem.id in solved_ids %}value="{{ problem.answer }}" disabled{% endif %}
-                >
-                <div class="button-container" id="button-container-{{ problem.id }}">
-                    <button 
-                        class="btn {% if problem.id in solved_ids %}btn-secondary{% else %}btn-primary{% endif %} check-btn" 
-                        onclick="checkAnswer({{ problem.id }})"
-                        id="check-btn-{{ problem.id }}"
-                        {% if problem.id in solved_ids %}disabled{% endif %}
-                    >
-                        {% if problem.id in solved_ids %}✓ Solved{% else %}Check{% endif %}
-                    </button>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-    {% endif %}
-</div>
-
 <style>
     .container {
         max-width: 1200px;
@@ -79,6 +24,42 @@
         color: var(--text-secondary);
         font-size: 1.1rem;
     }
+
+    /* --- ADD STYLES FOR NEW FILTER BAR --- */
+    .filter-bar {
+        display: flex;
+        justify-content: center;
+        gap: 0.75rem;
+        margin-bottom: 2.5rem;
+        flex-wrap: wrap; 
+    }
+    .filter-btn {
+        padding: 0.6rem 1.2rem;
+        border-radius: 2rem;
+        text-decoration: none;
+        font-weight: 600;
+        border: 2px solid transparent;
+        transition: all 0.3s ease;
+        background-color: #f3f4f6; 
+        color: #4b5563; 
+        font-size: 0.9rem;
+    }
+    .filter-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .filter-btn.active {
+        background-color: #667eea; 
+        color: white;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+    .filter-btn.difficulty-easy { border-color: #6ee7b7; color: #047857; background-color: #d1fae5;}
+    .filter-btn.difficulty-medium { border-color: #fcd34d; color: #b45309; background-color: #fef3c7;}
+    .filter-btn.difficulty-hard { border-color: #fda4af; color: #9f1239; background-color: #fee2e2;}
+    .filter-btn.difficulty-easy.active { background-color: #10b981; border-color: #059669; color: white; }
+    .filter-btn.difficulty-medium.active { background-color: #f59e0b; border-color: #d97706; color: white; }
+    .filter-btn.difficulty-hard.active { background-color: #ef4444; border-color: #dc2626; color: white; }
+    /* -------------------------------------- */
     
     .problems-grid {
         display: grid;
@@ -320,6 +301,82 @@
         }
     }
 </style>
+
+<div class="container">
+    <div class="page-header">
+        <h1>🧮 Math Problems</h1>
+        <p>Solve these arithmetic problems and get instant feedback!</p>
+    </div>
+
+    <div class="filter-bar">
+        <a href="?difficulty=easy&category={{ current_category|default:'' }}" 
+           class="filter-btn difficulty-easy {% if current_difficulty == 'easy' %}active{% endif %}">Easy</a>
+        <a href="?difficulty=medium&category={{ current_category|default:'' }}" 
+           class="filter-btn difficulty-medium {% if current_difficulty == 'medium' %}active{% endif %}">Medium</a>
+        <a href="?difficulty=hard&category={{ current_category|default:'' }}" 
+           class="filter-btn difficulty-hard {% if current_difficulty == 'hard' %}active{% endif %}">Hard</a>
+        
+        <span style="border-left: 1px solid #ddd; margin: 0 0.5rem;"></span>
+
+        <a href="?difficulty={{ current_difficulty|default:'' }}" 
+           class="filter-btn {% if not current_category %}active{% endif %}">All Categories</a>
+        {% for category_code, category_name in all_categories %}
+        <a href="?difficulty={{ current_difficulty|default:'' }}&category={{ category_code }}" 
+           class="filter-btn {% if current_category == category_code %}active{% endif %}">{{ category_name }}</a>
+        {% endfor %}
+    </div>
+    {% if not problems %}
+    <div class="card">
+        <div class="card-body">
+            <p>No problems available yet. Check back later!</p>
+        </div>
+    </div>
+    {% else %}
+    <div class="problems-grid">
+        {% for problem in problems %}
+        <div class="problem-card {% if problem.id in solved_ids %}problem-card-solved{% endif %}" data-problem-id="{{ problem.id }}">
+            <div class="problem-header">
+                <span class="problem-number">#{{ problem.id }}</span>
+                
+                <span class="difficulty-badge" style="background-color: #e5e7eb; color: #374151; text-transform: capitalize;">
+                    {{ problem.get_category_display }}
+                </span>
+                <span class="difficulty-badge difficulty-{{ problem.difficulty|lower }}">
+                    {{ problem.difficulty }}
+                </span>
+                {% if problem.id in solved_ids %}
+                <span class="solved-badge">✓ Solved</span>
+                {% endif %}
+            </div>
+            
+            <div class="problem-question">
+                <p class="question-text">{{ problem.question }}</p>
+            </div>
+            
+            <div class="problem-input">
+                <input 
+                    type="number" 
+                    class="answer-input" 
+                    placeholder="Your answer..."
+                    id="answer-{{ problem.id }}"
+                    {% if problem.id in solved_ids %}value="{{ problem.answer }}" disabled{% endif %}
+                >
+                <div class="button-container" id="button-container-{{ problem.id }}">
+                    <button 
+                        class="btn {% if problem.id in solved_ids %}btn-secondary{% else %}btn-primary{% endif %} check-btn" 
+                        onclick="checkAnswer({{ problem.id }})"
+                        id="check-btn-{{ problem.id }}"
+                        {% if problem.id in solved_ids %}disabled{% endif %}
+                    >
+                        {% if problem.id in solved_ids %}✓ Solved{% else %}Check{% endif %}
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
 
 <script>
 function getCookie(name) {

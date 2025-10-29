@@ -140,6 +140,7 @@
       /* Add emoji icons after text */
       .nav-link[href*="problems"]::after { content: " 🧩"; }
       .nav-link[href*="practice"]::after { content: " ⚡"; } /* Added icon for Practice */
+      .nav-link[href*="speed-run"]::after { content: " ⏱️"; } /* --- ADDED ICON FOR SPEED RUN --- */
       .nav-link[href*="daily_challenge"]::after { content: " 🏆"; } /* Moved icon here */
       .nav-link[href*="leaderboard"]::after { content: " 📊"; } /* Changed icon */
       .nav-link[href*="history"]::after { content: " 📜"; }
@@ -572,12 +573,12 @@
     </style>
   </head>
   <body>
-    <!-- Navigation Bar -->
     <nav class="navbar">
       <div class="navbar-left">
         <a href="{% url 'home' %}" class="navbar-brand">PBMate</a>
         <a href="{% url 'problems' %}" class="nav-link">Problems</a>
-        <a href="{% url 'practice' %}" class="nav-link">Practice</a> <!-- <<< ADDED THIS LINK -->
+        <a href="{% url 'practice' %}" class="nav-link">Practice</a> <a href="{% url 'speed_run' %}" class="nav-link">Speed Run</a>
+        
         <a
           href="{% url 'daily_challenge' %}"
           class="nav-link"
@@ -614,7 +615,6 @@
       </div>
     </nav>
 
-    <!-- Page Content -->
     <div class="page-wrapper">
       <div class="container">
         {% if messages %}

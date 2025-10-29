@@ -7,14 +7,32 @@ from django.dispatch import receiver
 
 # Create your models here.
 class Problem(models.Model):
+    # --- ADD THESE CATEGORY CHOICES ---
+    CATEGORY_CHOICES = [
+        ('arithmetic', 'Arithmetic'),
+        ('algebra', 'Algebra'),
+        ('fractions', 'Fractions'),
+    ]
+    # ------------------------------------
+
     id = models.AutoField(primary_key=True)
     question = models.CharField(max_length=255)
     answer = models.CharField(max_length=255)
     difficulty = models.CharField(max_length=50) # Should be 'easy', 'medium', or 'hard'
+    
+    # --- ADD THE CATEGORY FIELD ---
+    category = models.CharField(
+        max_length=50,
+        choices=CATEGORY_CHOICES,
+        default='arithmetic'
+    )
+    # ------------------------------
+
     solved_by = models.ManyToManyField('auth.User', related_name='solved_problems', blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     def __str__(self):
-        return f"{self.question} = {self.answer} (Difficulty: {self.difficulty})"
+        # --- UPDATE STR METHOD ---
+        return f"[{self.get_category_display()}] {self.question} = {self.answer} ({self.difficulty})"
 
 class Submission(models.Model):
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE)
@@ -100,3 +118,19 @@ def save_user_profile(sender, instance, **kwargs):
     except UserProfile.DoesNotExist:
         # This handles users created before the UserProfile model existed
         UserProfile.objects.create(user=instance)
+
+
+# --- ADD THIS NEW MODEL FOR FEATURE 4 ---
+class SpeedRunAttempt(models.Model):
+    """
+    Stores the result of a single speed run game.
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='speed_run_attempts')
+    score = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-score', '-created_at']
+
+    def __str__(self):
+        return f"{self.user.username}'s attempt: {self.score} points ({self.created_at.date()})"

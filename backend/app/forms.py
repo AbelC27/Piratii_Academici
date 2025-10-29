@@ -103,11 +103,14 @@ class LoginForm(forms.Form):
 class ProblemForm(forms.ModelForm):
     class Meta:
         model = Problem
-        fields = ['question', 'answer', 'difficulty']
+        # --- ADD 'category' TO FIELDS ---
+        fields = ['question', 'answer', 'difficulty', 'category']
         widgets = {
             'question': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., 5 + 7 or What is 10 x 3?'}),
             'answer': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., 12 or 30'}),
             'difficulty': forms.Select(choices=[('easy', 'Easy'), ('medium', 'Medium'), ('hard', 'Hard')], attrs={'class': 'form-control'}),
+            # --- ADD WIDGET FOR CATEGORY ---
+            'category': forms.Select(choices=Problem.CATEGORY_CHOICES, attrs={'class': 'form-control'}),
         }
 
     def clean_difficulty(self):
@@ -115,6 +118,14 @@ class ProblemForm(forms.ModelForm):
         if difficulty not in ['easy', 'medium', 'hard']:
             raise forms.ValidationError("Difficulty must be 'easy', 'medium', or 'hard'.")
         return difficulty
+
+    # --- ADD VALIDATION FOR CATEGORY ---
+    def clean_category(self):
+        category = self.cleaned_data.get('category', '').lower()
+        valid_categories = [c[0] for c in Problem.CATEGORY_CHOICES]
+        if category not in valid_categories:
+            raise forms.ValidationError("Invalid category.")
+        return category
 
     def clean_answer(self):
         # Basic check: Ensure answer isn't empty

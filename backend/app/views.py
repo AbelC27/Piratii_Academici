@@ -9,7 +9,8 @@ from datetime import date, timedelta # Import timedelta
 import json
 
 from .forms import LoginForm, UserRegistrationForm, ProblemForm
-from .models import Problem, Submission, DailyChallenge, UserProfile # Import UserProfile
+# --- IMPORT SpeedRunAttempt ---
+from .models import Problem, Submission, DailyChallenge, UserProfile, SpeedRunAttempt
 # --- NEW: Import the generator ---
 from . import problem_generator 
 from django.shortcuts import get_object_or_404
@@ -98,16 +99,22 @@ def check_daily_challenge(request):
         try:
             correct_answer = int(problem.answer)
         except ValueError:
-            return JsonResponse({'error': 'Problem answer is not a valid number.'}, status=500)
+            # --- FALLBACK FOR NON-INT ANSWERS (like fractions) ---
+            try:
+                # Try float
+                correct_answer = float(problem.answer)
+            except ValueError:
+                # Fallback to string
+                correct_answer = str(problem.answer)
+
 
         try:
             user_answer_value = int(user_answer)
         except ValueError:
-            return JsonResponse({
-                'correct': False,
-                'message': 'Please enter a valid number',
-                'correct_answer': None
-            })
+             try:
+                 user_answer_value = float(user_answer)
+             except ValueError:
+                 user_answer_value = str(user_answer)
 
         is_correct = (user_answer_value == correct_answer)
 
@@ -434,17 +441,26 @@ def leaderboard_view(request):
 
 # Codrin
 
-# --- MODIFIED: Added Filtering ---
+# --- MODIFIED: Added Category Filtering ---
 def problems_view(request):
     problems_qs = Problem.objects.all()
+    
+    # --- Get all categories for filter bar ---
+    all_categories = Problem.CATEGORY_CHOICES
     
     # Filter by difficulty
     difficulty_filter = request.GET.get('difficulty', None)
     valid_difficulties = ['easy', 'medium', 'hard']
     if difficulty_filter and difficulty_filter.lower() in valid_difficulties:
         problems_qs = problems_qs.filter(difficulty__iexact=difficulty_filter)
+
+    # --- NEW: Filter by category ---
+    category_filter = request.GET.get('category', None)
+    valid_categories = [c[0] for c in all_categories]
+    if category_filter and category_filter.lower() in valid_categories:
+        problems_qs = problems_qs.filter(category__iexact=category_filter)
         
-    problems = problems_qs.order_by('-created_at') # Order after filtering
+    problems = problems_qs.order_by('id') # Order after filtering
 
     # Get solved problem IDs for the current user
     solved_ids = []
@@ -457,7 +473,9 @@ def problems_view(request):
     return render(request, 'app/problems.html', {
         'problems': problems,
         'solved_ids': solved_ids,
-        'current_difficulty': difficulty_filter # Pass filter to template
+        'current_difficulty': difficulty_filter,
+        'all_categories': all_categories,         # <-- Pass categories
+        'current_category': category_filter,      # <-- Pass current category
     })
 
 
@@ -484,10 +502,16 @@ def check_answer(request):
             user_answer_value = int(user_answer)
             is_correct = (user_answer_value == correct_answer)
         except ValueError:
-             # If conversion fails, fallback to string comparison (less ideal but handles non-numeric answers if any)
-             correct_answer_str = str(problem.answer).strip()
-             is_correct = (user_answer == correct_answer_str)
-             correct_answer = correct_answer_str # Ensure correct_answer sent back matches comparison type
+             # If conversion fails, try floats
+             try:
+                correct_answer = float(problem.answer)
+                user_answer_value = float(user_answer)
+                is_correct = (user_answer_value == correct_answer)
+             except ValueError:
+                # Fallback to string comparison (handles fractions like '2/3')
+                correct_answer_str = str(problem.answer).strip()
+                is_correct = (user_answer == correct_answer_str)
+                correct_answer = correct_answer_str # Ensure correct_answer sent back matches comparison type
             
         # Save submission if user is authenticated (already checked by decorator)
         Submission.objects.create(
@@ -560,6 +584,64 @@ def practice_view(request):
         'current_difficulty': difficulty,
     }
     return render(request, 'app/practice.html', context)
+
+
+# --- ADD THESE 3 NEW VIEWS FOR SPEED RUN ---
+
+@login_required
+def speed_run_view(request):
+    """
+    Renders the main page for the Speed Run game.
+    """
+    # Get user's high score
+    high_score = SpeedRunAttempt.objects.filter(user=request.user).order_by('-score').first()
+    context = {
+        'high_score': high_score.score if high_score else 0
+    }
+    return render(request, 'app/speed_run.html', context)
+
+@login_required
+@require_http_methods(["GET"])
+def get_generated_problem_api(request):
+    """
+    API endpoint to fetch a single, dynamically generated 'easy' problem.
+    """
+    try:
+        # We use 'easy' for speed run mode
+        problem_data = problem_generator.generate_arithmetic_problem('easy')
+        return JsonResponse(problem_data)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+@require_http_methods(["POST"])
+def save_speed_run_view(request):
+    """
+    API endpoint to save a user's speed run score.
+    """
+    try:
+        data = json.loads(request.body)
+        score = int(data.get('score', 0))
+
+        if score < 0:
+            return JsonResponse({'error': 'Invalid score'}, status=400)
+
+        # Save the attempt
+        attempt = SpeedRunAttempt.objects.create(user=request.user, score=score)
+
+        # Check if it's a new high score
+        high_score = SpeedRunAttempt.objects.filter(user=request.user).order_by('-score').first().score
+        
+        return JsonResponse({
+            'status': 'success', 
+            'score_saved': attempt.score,
+            'high_score': high_score
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+# -----------------------------------------------
+
 
 @login_required
 @user_passes_test(is_admin)

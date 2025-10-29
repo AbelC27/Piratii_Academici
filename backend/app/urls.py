@@ -9,6 +9,13 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     path('problems/', views.problems_view, name='problems'), # Existing problems from DB
     path('practice/', views.practice_view, name='practice'), # <-- ADD THIS LINE for generated problems
+    
+    # --- ADD THESE 3 LINES FOR SPEED RUN ---
+    path('speed-run/', views.speed_run_view, name='speed_run'),
+    path('api/get-generated-problem/', views.get_generated_problem_api, name='get_generated_problem_api'),
+    path('api/save-speed-run/', views.save_speed_run_view, name='save_speed_run'),
+    # --------------------------------------
+
     path('api/check-answer/', views.check_answer, name='check_answer'), # Checks DB problems
     
     path('daily-challenge/', views.daily_challenge_view, name='daily_challenge'),

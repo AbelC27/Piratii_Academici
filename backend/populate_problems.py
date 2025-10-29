@@ -88,7 +88,8 @@ for question, answer in easy_problems:
         Problem.objects.create(
             question=question,
             answer=answer,
-            difficulty='easy'
+            difficulty='easy',
+            category='arithmetic' # <-- ADD CATEGORY
         )
         created += 1
 
@@ -97,7 +98,8 @@ for question, answer in medium_problems:
         Problem.objects.create(
             question=question,
             answer=answer,
-            difficulty='medium'
+            difficulty='medium',
+            category='arithmetic' # <-- ADD CATEGORY
         )
         created += 1
 
@@ -106,7 +108,8 @@ for question, answer in hard_problems:
         Problem.objects.create(
             question=question,
             answer=answer,
-            difficulty='hard'
+            difficulty='hard',
+            category='arithmetic' # <-- ADD CATEGORY
         )
         created += 1
 

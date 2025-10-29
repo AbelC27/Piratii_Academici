@@ -19,10 +19,19 @@ class Command(BaseCommand):
             default='medium',
             help='The difficulty of problems to generate (easy, medium, hard)',
         )
+        # --- ADD ARGUMENT FOR CATEGORY ---
+        parser.add_argument(
+            '--category',
+            type=str,
+            default='arithmetic',
+            help="The category of problems to generate (e.g., 'arithmetic', 'algebra', 'fractions')"
+        )
 
     def handle(self, *args, **kwargs):
         count = kwargs['count']
         difficulty = kwargs['difficulty']
+        # --- GET CATEGORY ---
+        category = kwargs['category']
 
         # 1. Get the API key from environment variables
         api_key = os.environ.get("OPENAI_API_KEY")
@@ -41,30 +50,27 @@ class Command(BaseCommand):
             return
 
         # 3. Define the prompt for the AI
-        # We ask for a specific format: "Question;Answer;Difficulty"
+        # --- MODIFIED PROMPT ---
         prompt = f"""
         Generate {count} new math problems with the following specifications:
         - The difficulty level must be: {difficulty}
-        - The problems should be arithmetic or simple word problems.
+        - The category must be: {category}
         - Provide the response as a list, with each problem on a new line.
-        - Use the exact format: "Question text;Answer text;difficulty"
+        - Use the exact format: "Question text;Answer text;difficulty;category"
         - Do not include any other text, headers, or explanations.
-        - Ensure the 'Answer' is just the final numerical answer.
+        - Ensure the 'Answer' is just the final numerical answer or simple text (like '2/3').
 
-        Example for 'easy':
-        5 * 8;40;easy
-        What is 15 + 22?;37;easy
-
-        Example for 'medium':
-        (10 + 5) * 3;45;medium
-        A bus has 30 seats. 12 are empty. How many are full?;18;medium
+        Example for 'arithmetic' (easy):
+        5 * 8;40;easy;arithmetic
         
-        Example for 'hard':
-        100 - (22 * 3);34;hard
-        Sara buys 3 apples at $2 each and 2 bananas at $1 each. How much change does she get from $10?;2;hard
+        Example for 'algebra' (medium):
+        Solve for x: 2x + 4 = 10;3;medium;algebra
+
+        Example for 'fractions' (hard):
+        What is 3/4 * 8/9?;2/3;hard;fractions
         """
 
-        self.stdout.write(self.style.SUCCESS(f'Sending prompt to OpenAI for {count} {difficulty} problems...'))
+        self.stdout.write(self.style.SUCCESS(f'Sending prompt to OpenAI for {count} {difficulty} {category} problems...'))
 
         # 4. Call the API
         try:
@@ -99,20 +105,22 @@ class Command(BaseCommand):
                 # Split by the semicolon
                 parts = line.split(';')
                 
-                # Ensure we have exactly 3 parts
-                if len(parts) != 3:
-                    self.stdout.write(self.style.WARNING(f'Skipping malformed line: {line}'))
+                # --- UPDATE TO EXPECT 4 PARTS ---
+                if len(parts) != 4:
+                    self.stdout.write(self.style.WARNING(f'Skipping malformed line (expected 4 parts): {line}'))
                     continue
                     
-                question, answer, prob_difficulty = parts
+                question, answer, prob_difficulty, prob_category = parts
                 
                 # Clean up and validate
                 question = question.strip()
                 answer = answer.strip()
                 prob_difficulty = prob_difficulty.strip().lower()
+                prob_category = prob_category.strip().lower()
 
                 # Basic validation
-                if not question or not answer or prob_difficulty not in ['easy', 'medium', 'hard']:
+                valid_categories = [c[0] for c in Problem.CATEGORY_CHOICES]
+                if not all([question, answer, prob_difficulty in ['easy', 'medium', 'hard'], prob_category in valid_categories]):
                     self.stdout.write(self.style.WARNING(f'Skipping invalid data: {line}'))
                     continue
                     
@@ -122,14 +130,15 @@ class Command(BaseCommand):
                     skipped_count += 1
                     continue
                     
-                # Create and save the new problem
+                # --- CREATE PROBLEM WITH CATEGORY ---
                 Problem.objects.create(
                     question=question,
                     answer=answer,
-                    difficulty=prob_difficulty
+                    difficulty=prob_difficulty,
+                    category=prob_category
                 )
                 created_count += 1
-                self.stdout.write(f'  + Added: {question} ({prob_difficulty})')
+                self.stdout.write(f'  + Added: [{prob_category}] {question} ({prob_difficulty})')
 
             except Exception as e:
                 self.stdout.write(self.style.ERROR(f'Failed to parse or save line "{line}": {e}'))
