@@ -1,7 +1,6 @@
 """
 Script to populate the database with math problems
-Run with: python manage.py shell < populate_problems.py
-Or: python populate_problems.py
+Run with: python populate_problems.py
 """
 
 import os
@@ -14,10 +13,11 @@ django.setup()
 from app.models import Problem
 
 # Clear existing problems (optional)
+# Problem.objects.all().delete()
 print("Current problems count:", Problem.objects.count())
 
-# Easy problems
-easy_problems = [
+# --- Arithmetic Problems (Existing) ---
+arithmetic_easy = [
     ("2 + 3", "5"),
     ("5 + 7", "12"),
     ("10 - 4", "6"),
@@ -28,16 +28,8 @@ easy_problems = [
     ("20 ÷ 4", "5"),
     ("7 + 8", "15"),
     ("12 - 5", "7"),
-    ("9 + 6", "15"),
-    ("18 - 9", "9"),
-    ("4 × 5", "20"),
-    ("7 × 3", "21"),
-    ("24 ÷ 6", "4"),
-    ("30 ÷ 5", "6"),
 ]
-
-# Medium problems
-medium_problems = [
+arithmetic_medium = [
     ("12 + 18", "30"),
     ("25 - 13", "12"),
     ("15 × 6", "90"),
@@ -46,18 +38,8 @@ medium_problems = [
     ("45 - 28", "17"),
     ("12 × 9", "108"),
     ("72 ÷ 9", "8"),
-    ("34 + 56", "90"),
-    ("88 - 39", "49"),
-    ("11 × 7", "77"),
-    ("63 ÷ 7", "9"),
-    ("29 + 41", "70"),
-    ("76 - 48", "28"),
-    ("13 × 8", "104"),
-    ("96 ÷ 12", "8"),
 ]
-
-# Hard problems
-hard_problems = [
+arithmetic_hard = [
     ("123 + 456", "579"),
     ("789 - 234", "555"),
     ("25 × 24", "600"),
@@ -66,55 +48,92 @@ hard_problems = [
     ("987 - 543", "444"),
     ("32 × 17", "544"),
     ("225 ÷ 15", "15"),
-    ("567 + 890", "1457"),
-    ("1000 - 678", "322"),
-    ("45 × 23", "1035"),
-    ("384 ÷ 16", "24"),
-    ("234 + 567", "801"),
-    ("876 - 432", "444"),
-    ("28 × 35", "980"),
-    ("576 ÷ 24", "24"),
-    ("15 × 15", "225"),
-    ("18 × 18", "324"),
-    ("999 - 888", "111"),
-    ("777 + 333", "1110"),
 ]
 
-# Create problems
-created = 0
+# --- NEW: Algebra Problems ---
+algebra_easy = [
+    ("Solve for x: x + 5 = 10", "5"),
+    ("Solve for y: y - 3 = 7", "10"),
+    ("Solve for a: 2a = 12", "6"),
+    ("Solve for b: b / 4 = 3", "12"),
+]
+algebra_medium = [
+    ("Solve for x: 2x + 3 = 11", "4"),
+    ("Solve for y: 3y - 5 = 10", "5"),
+    ("Solve for a: a / 2 + 1 = 5", "8"),
+    ("Solve for b: 4(b - 1) = 12", "4"),
+]
+algebra_hard = [
+    ("Solve for x: 5x - 7 = 3x + 5", "6"),
+    ("Solve for y: 2(y + 3) = 18", "6"),
+    ("Solve for a: a / 3 + 2 = a / 4 + 3", "12"),
+    ("Solve for b: (b + 1) / 5 = 2", "9"),
+]
 
-for question, answer in easy_problems:
-    if not Problem.objects.filter(question=question).exists():
-        Problem.objects.create(
-            question=question,
-            answer=answer,
-            difficulty='easy',
-            category='arithmetic' # <-- ADD CATEGORY
-        )
-        created += 1
+# --- NEW: Fractions Problems ---
+fractions_easy = [
+    ("1/2 + 1/4", "3/4"),
+    ("3/5 - 1/5", "2/5"),
+    ("1/3 × 2/3", "2/9"),
+    ("What is half of 10?", "5"), # Word problem style
+]
+fractions_medium = [
+    ("1/2 + 1/3", "5/6"),
+    ("3/4 - 1/8", "5/8"),
+    ("2/5 × 5/6", "1/3"),
+    ("3/4 ÷ 1/2", "3/2"), # or 1.5 - decide on answer format
+]
+fractions_hard = [
+    ("5/6 + 3/8", "29/24"),
+    ("7/10 - 2/5", "3/10"),
+    ("3/7 × 14/15", "2/5"),
+    ("5/9 ÷ 10/3", "1/6"),
+]
 
-for question, answer in medium_problems:
-    if not Problem.objects.filter(question=question).exists():
-        Problem.objects.create(
-            question=question,
-            answer=answer,
-            difficulty='medium',
-            category='arithmetic' # <-- ADD CATEGORY
-        )
-        created += 1
+# Function to add problems, avoiding duplicates
+def add_problem_batch(problems_list, difficulty, category):
+    added_count = 0
+    for question, answer in problems_list:
+        if not Problem.objects.filter(question__iexact=question).exists():
+            Problem.objects.create(
+                question=question,
+                answer=answer,
+                difficulty=difficulty,
+                category=category
+            )
+            added_count += 1
+    return added_count
 
-for question, answer in hard_problems:
-    if not Problem.objects.filter(question=question).exists():
-        Problem.objects.create(
-            question=question,
-            answer=answer,
-            difficulty='hard',
-            category='arithmetic' # <-- ADD CATEGORY
-        )
-        created += 1
+# --- Create problems by category and difficulty ---
+created_total = 0
 
-print(f"\n✅ Successfully created {created} new problems!")
+print("\nAdding Arithmetic problems...")
+created_total += add_problem_batch(arithmetic_easy, 'easy', 'arithmetic')
+created_total += add_problem_batch(arithmetic_medium, 'medium', 'arithmetic')
+created_total += add_problem_batch(arithmetic_hard, 'hard', 'arithmetic')
+
+print("Adding Algebra problems...")
+created_total += add_problem_batch(algebra_easy, 'easy', 'algebra')
+created_total += add_problem_batch(algebra_medium, 'medium', 'algebra')
+created_total += add_problem_batch(algebra_hard, 'hard', 'algebra')
+
+print("Adding Fractions problems...")
+created_total += add_problem_batch(fractions_easy, 'easy', 'fractions')
+created_total += add_problem_batch(fractions_medium, 'medium', 'fractions')
+created_total += add_problem_batch(fractions_hard, 'hard', 'fractions')
+
+# --- Updated Summary ---
+print(f"\n✅ Successfully created {created_total} new problems!")
 print(f"📊 Total problems in database: {Problem.objects.count()}")
+
+# Print counts per category
+print("\n--- Counts per Category ---")
+for category_code, category_name in Problem.CATEGORY_CHOICES:
+    count = Problem.objects.filter(category=category_code).count()
+    print(f"   - {category_name}: {count}")
+
+# Print counts per difficulty
+print("\n--- Counts per Difficulty ---")
 print(f"   - Easy: {Problem.objects.filter(difficulty='easy').count()}")
 print(f"   - Medium: {Problem.objects.filter(difficulty='medium').count()}")
 print(f"   - Hard: {Problem.objects.filter(difficulty='hard').count()}")
