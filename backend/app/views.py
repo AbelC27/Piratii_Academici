@@ -54,6 +54,13 @@ def daily_challenge_view(request):
 
     # Calculate stats
     total_completions = today_challenge.completed_by.count()
+    
+    # --- NEW: Get current streak ---
+    current_streak = 0
+    try:
+        current_streak = request.user.userprofile.current_streak
+    except UserProfile.DoesNotExist:
+        pass # Will be 0
 
     context = {
         'challenge': today_challenge,
@@ -62,6 +69,7 @@ def daily_challenge_view(request):
         'user_attempts': user_attempts,
         'total_completions': total_completions,
         'bonus_points': today_challenge.bonus_points,
+        'current_streak': current_streak, # <-- Pass streak to template
     }
 
     return render(request, 'app/daily_challenge.html', context)
@@ -123,14 +131,19 @@ def check_daily_challenge(request):
                 profile = request.user.userprofile
                 bonus_points_awarded = today_challenge.bonus_points
                 profile.points += bonus_points_awarded
-                # --- Streak Logic (Placeholder - add fields to UserProfile first) ---
-                # today = date.today()
-                # if profile.last_daily_challenge_date == today - timedelta(days=1):
-                #     profile.current_streak += 1
-                # elif profile.last_daily_challenge_date != today: # Avoid double increment if solved same day
-                #     profile.current_streak = 1
-                # profile.last_daily_challenge_date = today
+                
+                # --- Streak Logic (UNCOMMENTED AND IMPLEMENTED) ---
+                today = date.today()
+                if profile.last_daily_challenge_date == today - timedelta(days=1):
+                    # Streak continues
+                    profile.current_streak += 1
+                elif profile.last_daily_challenge_date != today: # Avoid double increment if solved same day
+                    # Reset or start streak
+                    profile.current_streak = 1
+                
+                profile.last_daily_challenge_date = today
                 profile.save()
+                
             except UserProfile.DoesNotExist:
                 pass # User profile not found, just skip
             
@@ -190,13 +203,13 @@ def profile_view(request):
     except UserProfile.DoesNotExist:
         profile = UserProfile.objects.create(user=request.user) # Create if missing
 
-    # --- Fetch Streak Info (Placeholder - requires model changes) ---
-    # current_streak = getattr(profile, 'current_streak', 0) 
+    # --- Fetch Streak Info (NOW IMPLEMENTED) ---
+    current_streak = getattr(profile, 'current_streak', 0) 
 
     return render(request, 'app/profile.html', {
         'user': request.user, 
         'profile': profile,
-        # 'current_streak': current_streak 
+        'current_streak': current_streak # <-- PASS STREAK
     })
 
 

@@ -36,7 +36,8 @@
 
   .challenge-stats {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    /* --- MODIFIED: Use 3 columns --- */
+    grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
     margin-bottom: 2rem;
   }
@@ -53,6 +54,11 @@
     font-size: 2rem;
     color: #667eea;
     margin-bottom: 0.5rem;
+  }
+  
+  /* --- ADDED: Style for streak --- */
+  .stat-card h3.streak-fire {
+      color: #f59e0b; /* Orange color for streak */
   }
 
   .stat-card p {
@@ -204,7 +210,6 @@
 </style>
 
 <div class="challenge-container">
-  <!-- Header -->
   <div class="challenge-header">
     <h1>
       <span>🏆</span>
@@ -217,11 +222,15 @@
     </div>
   </div>
 
-  <!-- Stats -->
   <div class="challenge-stats">
     <div class="stat-card">
+      <h3 class="streak-fire">{{ current_streak }} 🔥</h3>
+      <p>Your Streak</p>
+    </div>
+    
+    <div class="stat-card">
       <h3>{{ total_completions }}</h3>
-      <p>Users Completed Today</p>
+      <p>Users Completed</p>
     </div>
     <div class="stat-card">
       <h3>{{ problem.difficulty|title }}</h3>
@@ -229,7 +238,6 @@
     </div>
   </div>
 
-  <!-- Problem -->
   <div class="challenge-problem">
     {% if already_completed %}
     <div class="completed-badge">
@@ -271,7 +279,6 @@
     <div id="resultMessage"></div>
   </div>
 
-  <!-- Attempts History -->
   {% if user_attempts %}
   <div class="attempts-section">
     <h3>📊 Your Attempts Today</h3>
@@ -330,10 +337,8 @@
 
         if (data.correct) {
           resultDiv.innerHTML = `<div class="result-message result-success">${data.message}</div>`;
-          if (data.bonus_points > 0) {
-            // Reload page to show completion status
-            setTimeout(() => window.location.reload(), 2000);
-          }
+          // Reload page to show completion status and updated streak
+          setTimeout(() => window.location.reload(), 2000);
         } else {
           resultDiv.innerHTML = `<div class="result-message result-error">${data.message}</div>`;
           submitBtn.disabled = false;
