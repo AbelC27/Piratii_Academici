@@ -9,7 +9,7 @@ from datetime import date
 import json
 
 from .forms import LoginForm, UserRegistrationForm
-from .models import Problem, Submission, DailyChallenge
+from .models import Problem, Submission, DailyChallenge, UserProfile # Import UserProfile
 
 
 # Andi
@@ -82,11 +82,12 @@ def check_daily_challenge(request):
         # Check if already completed
         already_completed = today_challenge.is_completed_by(request.user)
 
-        # Evaluate answers
+        # --- FIX: Safe Answer Checking ---
+        # The 'answer' field is a string like "579". Just cast to int.
         try:
-            correct_answer = eval(problem.answer, {"_builtins_": None}, {})
-        except:
             correct_answer = int(problem.answer)
+        except ValueError:
+            return JsonResponse({'error': 'Problem answer is not a valid number.'}, status=500)
 
         try:
             user_answer_value = int(user_answer)
@@ -107,11 +108,23 @@ def check_daily_challenge(request):
             was_correct=is_correct
         )
 
+        bonus_points_awarded = 0
         # Mark as completed if correct and not already completed
         if is_correct and not already_completed:
             today_challenge.completed_by.add(request.user)
             problem.solved_by.add(request.user)
-            message = f'🎉 Correct! Daily Challenge completed! +{today_challenge.bonus_points} bonus points!'
+            
+            # --- NEW: Award Bonus Points ---
+            try:
+                profile = request.user.userprofile
+                bonus_points_awarded = today_challenge.bonus_points
+                profile.points += bonus_points_awarded
+                profile.save()
+            except UserProfile.DoesNotExist:
+                pass # User profile not found, just skip
+            
+            message = f'🎉 Correct! Daily Challenge completed! +{bonus_points_awarded} bonus points!'
+            
         elif is_correct and already_completed:
             message = '✅ Correct! (Already completed today)'
         else:
@@ -122,7 +135,7 @@ def check_daily_challenge(request):
             'message': message,
             'correct_answer': correct_answer if not is_correct else None,
             'already_completed': already_completed or is_correct,
-            'bonus_points': today_challenge.bonus_points if (is_correct and not already_completed) else 0
+            'bonus_points': bonus_points_awarded
         })
 
     except Exception as e:
@@ -155,10 +168,18 @@ def logout_view(request):
 def home_view(request):
     return render(request, 'app/home.html')
 
+@login_required # Apply login_required decorator
 def profile_view(request):
     if not request.user.is_authenticated:
         return redirect('login')
-    return render(request, 'app/profile.html', {'user': request.user})
+        
+    # --- MODIFIED: Fetch profile to show points ---
+    try:
+        profile = request.user.userprofile
+    except UserProfile.DoesNotExist:
+        profile = UserProfile.objects.create(user=request.user) # Create if missing
+
+    return render(request, 'app/profile.html', {'user': request.user, 'profile': profile})
 
 
 
@@ -186,6 +207,18 @@ def edit_profile_view(request):
 # Abel
 
 
+# --- NEW FEATURE: My History View ---
+@login_required
+def my_history_view(request):
+    """Show a list of the current user's past submissions."""
+    submissions = Submission.objects.filter(
+        user=request.user
+    ).select_related('problem').order_by('-submitted_at')
+    
+    context = {
+        'submissions': submissions
+    }
+    return render(request, 'app/my_history.html', context)
 
 
 # Casi
@@ -308,26 +341,18 @@ def demote_user(request, user_id):
 
 @login_required
 def leaderboard_view(request):
-    submissions = Submission.objects.all()
-    users = AuthUser.objects.all()
-    total_users = users.count()
-    leaderboard = []
-    for user in users:
-        correct_submission = 0
-        for submission in submissions:
-            if user == submission.user:
-                if submission.was_correct:
-                    correct_submission += 1
-        leaderboard.append({
-            'user': user,
-            'problems_solved': correct_submission
-        })
+    # --- FIX: Efficient Leaderboard Query ---
+    # Get top 100 users ordered by points
+    leaderboard_profiles = UserProfile.objects.select_related('user').order_by('-points')[:100]
 
-    leaderboard.sort(key=lambda x: (-x['problems_solved'], x['user'].date_joined))
+    # Get stats
+    total_users = AuthUser.objects.count()
     total_problems = Problem.objects.count()
-    total_solved = sum(entry['problems_solved'] for entry in leaderboard)
+    # Total solved (sum of all points) isn't as useful as total correct submissions
+    total_solved = Submission.objects.filter(was_correct=True).count()
+
     return render(request, 'app/leaderboard.html', {
-        'leaderboard': leaderboard,
+        'leaderboard': leaderboard_profiles, # Pass UserProfile objects
         'total_users': total_users,
         'total_problems': total_problems,
         'total_solved': total_solved
@@ -363,11 +388,11 @@ def check_answer(request):
 
         problem = Problem.objects.get(id=problem_id)
 
-        # Evaluate the correct answer
+        # --- FIX: Safe Answer Checking ---
         try:
-            correct_answer = eval(problem.answer, {"_builtins_": None}, {})
-        except:
-            correct_answer = int(problem.answer)  # Fallback if already a number
+            correct_answer = int(problem.answer)
+        except ValueError:
+            return JsonResponse({'error': 'Problem answer is not a valid number.'}, status=500)
 
         # Evaluate user answer
         try:
@@ -393,6 +418,24 @@ def check_answer(request):
             # Add user to solved_by list if correct and not already there
             if is_correct and request.user not in problem.solved_by.all():
                 problem.solved_by.add(request.user)
+                
+                # --- NEW: Award Points Based on Difficulty ---
+                points_to_add = 0
+                if problem.difficulty.lower() == 'easy':
+                    points_to_add = 5
+                elif problem.difficulty.lower() == 'medium':
+                    points_to_add = 10
+                elif problem.difficulty.lower() == 'hard':
+                    points_to_add = 20
+                
+                if points_to_add > 0:
+                    try:
+                        profile = request.user.userprofile
+                        profile.points += points_to_add
+                        profile.save()
+                    except UserProfile.DoesNotExist:
+                        pass # Profile not found, just skip
+
 
         return JsonResponse({
             'correct': is_correct,

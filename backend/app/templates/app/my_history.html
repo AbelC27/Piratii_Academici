@@ -1,0 +1,91 @@
+{% extends 'app/base.html' %}
+{% block title %}My Submission History - PBMate{% endblock %}
+{% block content %}
+<style>
+  /* Make the page container wider on this page only */
+  .page-wrapper > .container {
+    max-width: 1100px !important;
+  }
+  /* Custom outer wrapper to avoid nested .container sizing */
+  .history-container {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .history-header { padding-bottom: 1rem; text-align: center; }
+  .history-table-wrapper { overflow: auto; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin: 0 auto; }
+  .history-table { width: 100%; border-collapse: collapse; background: white; }
+  .history-table th, .history-table td { padding: 0.75rem 1rem; }
+  .history-table thead tr { background: #f3f4f6; text-align: left; }
+  .history-table tbody tr { border-bottom: 1px solid #f1f5f9; }
+  .history-when { color: #475569; white-space: nowrap; }
+  .history-user { font-weight: 600; }
+  
+  .status-correct {
+    color: #155724;
+    background-color: #d4edda;
+    padding: 0.2rem 0.5rem;
+    border-radius: 5px;
+    font-weight: 600;
+  }
+  .status-incorrect {
+    color: #721c24;
+    background-color: #f8d7da;
+    padding: 0.2rem 0.5rem;
+    border-radius: 5px;
+    font-weight: 600;
+  }
+  .submitted-answer {
+    font-family: 'Courier New', monospace;
+    color: #555;
+  }
+
+  /* Helpful column sizing */
+  .history-table thead th:nth-child(1) { width: 170px; } /* When */
+  .history-table thead th:nth-child(2) { width: 120px; } /* Status */
+  .history-table thead th:nth-child(4) { width: 150px; } /* Your Answer */
+</style>
+
+<div class="history-container">
+  <div class="history-header">
+    <h1>My Submission History</h1>
+    <p>A log of all your answers.</p>
+  </div>
+
+  {% if not submissions %}
+    <div class_card"><div class="card-body">You haven't solved any problems yet. <a href="{% url 'problems' %}">Get started!</a></div></div>
+  {% else %}
+  <div class="history-table-wrapper">
+    <table class="history-table">
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Status</th>
+          <th>Problem</th>
+          <th>Your Answer</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in submissions %}
+        <tr>
+          <td class="history-when">{{ s.submitted_at|date:"Y-m-d H:i" }}</td>
+          <td>
+            {% if s.was_correct %}
+                <span class="status-correct">✓ Correct</span>
+            {% else %}
+                <span class="status-incorrect">✗ Incorrect</span>
+            {% endif %}
+          </td>
+          <td>#{{ s.problem.id }} — {{ s.problem.question }}</td>
+          <td class="submitted-answer">{{ s.submitted_answer }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

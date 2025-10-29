@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Problem, Submission, DailyChallenge
+from .models import Problem, Submission, DailyChallenge, UserProfile # Import UserProfile
 from django.contrib.auth.models import User
 
 # Register your models here.
@@ -9,6 +9,7 @@ def register(model_class):
 
 register(Problem)
 register(Submission)
+register(UserProfile) # <-- ADD THIS LINE
 
 # Register DailyChallenge with custom admin
 @admin.register(DailyChallenge)
