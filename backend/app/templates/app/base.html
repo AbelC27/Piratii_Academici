@@ -77,6 +77,7 @@
         display: flex;
         gap: 0.5rem;
         align-items: center;
+        flex-wrap: wrap; /* Allow wrapping on small screens */
       }
 
       .navbar-links {
@@ -94,6 +95,7 @@
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         position: relative;
         overflow: hidden;
+        white-space: nowrap; /* Prevent links from breaking lines */
       }
 
       /* Page Navigation Links with Icons */
@@ -135,18 +137,14 @@
         transform: translateY(-1px) scale(1.02);
       }
 
-      /* Add emoji icons before text */
-      .nav-link[href*="problems"]::after {
-        content: " 🧩";
-      }
+      /* Add emoji icons after text */
+      .nav-link[href*="problems"]::after { content: " 🧩"; }
+      .nav-link[href*="practice"]::after { content: " ⚡"; } /* Added icon for Practice */
+      .nav-link[href*="daily_challenge"]::after { content: " 🏆"; } /* Moved icon here */
+      .nav-link[href*="leaderboard"]::after { content: " 📊"; } /* Changed icon */
+      .nav-link[href*="history"]::after { content: " 📜"; }
+      .nav-link[href*="admin"]::after { content: " 👑"; } /* Moved icon here */
 
-      .nav-link[href*="leaderboard"]::after {
-        content: " 🏆";
-      }
-
-      .nav-link[href*="history"]::after {
-        content: " 📜";
-      }
 
       .nav-btn {
         border: none;
@@ -262,6 +260,7 @@
         border-radius: 20px;
         font-weight: 600;
         animation: fadeIn 0.5s ease-out;
+        white-space: nowrap;
       }
 
       @keyframes fadeIn {
@@ -277,9 +276,9 @@
 
       .page-wrapper {
         display: flex;
-        align-items: center;
+        /* align-items: center; Remove center alignment to allow scrolling */
         justify-content: center;
-        min-height: calc(100vh - 80px);
+        min-height: calc(100vh - 80px); /* Adjust height based on navbar */
         padding: 2rem;
       }
 
@@ -289,7 +288,8 @@
         border-radius: 10px;
         box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
         width: 100%;
-        max-width: 400px;
+        max-width: 400px; /* Default max-width, can be overridden */
+        margin: 0 auto; /* Center container */
       }
 
       .header {
@@ -442,17 +442,18 @@
 
       .profile-section {
         display: flex;
-        justify-contet: space-between;
+        justify-content: space-between; /* Fix typo */
         align-items: center;
         margin-bottom: 1.25rem;
         background: rgba(255, 255, 255, 0.9);
-        padding: 0.4rem;
+        padding: 0.4rem 1rem; /* Add horizontal padding */
         border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); /* Softer shadow */
       }
       .profile-section p {
         flex: 1;
-        margin-right: 2rem;
+        margin-right: 1rem; /* Reduced margin */
+        color: #333; /* Ensure text is dark */
       }
 
       .profile-info {
@@ -477,22 +478,20 @@
         font-weight: 500;
         cursor: pointer;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); /* Softer shadow */
       }
 
       .btn-modify:hover {
-        transform: translateY(-3px) scale(1.05);
-        box-shadow: 0 12px 30px rgba(102, 126, 234, 0.5);
+        transform: translateY(-2px) scale(1.03); /* Slightly less scale */
+        box-shadow: 0 6px 15px rgba(102, 126, 234, 0.4);
         filter: brightness(1.1);
       }
 
-      .container {
-        max-width: 500px;
-        background: white;
-        padding: 2rem;
-        border-radius: 15px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-      }
+      /* Adjust container max-width on profile/edit pages if needed */
+      /* Example: */
+      /* body:has(> .page-wrapper > .container > .profile-header) .container { max-width: 600px; } */
+
+
       .avatar-link {
         display: inline-flex;
         align-items: center;
@@ -531,46 +530,73 @@
         box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         transform: translateY(-2px);
       }
+
+      /* Responsive Navbar */
+      @media (max-width: 992px) { /* Adjust breakpoint as needed */
+          .navbar-left {
+              gap: 0.3rem; /* Reduce gap */
+          }
+          .nav-link, .nav-btn {
+              padding: 0.5rem 0.8rem; /* Smaller padding */
+              font-size: 0.9rem; /* Smaller font */
+          }
+          .navbar-brand {
+              font-size: 1.3rem;
+          }
+          .user-info {
+              font-size: 0.9rem;
+              padding: 0.4rem 0.8rem;
+              margin-right: 0.5rem;
+          }
+          .avatar-link {
+              width: 35px;
+              height: 35px;
+              font-size: 1rem;
+              margin-right: 0.5rem;
+          }
+           .navbar {
+              padding: 0.8rem 1rem; /* Adjust padding */
+          }
+      }
+       @media (max-width: 768px) {
+           .navbar-left .nav-link, /* Hide some links on very small screens */
+           .navbar-left .nav-link[href*="history"] { /* Example: hide history links */
+                /* display: none; */ /* Uncomment to hide */
+           }
+            .user-info {
+               display: none; /* Hide welcome message */
+           }
+       }
+
+
     </style>
   </head>
   <body>
+    <!-- Navigation Bar -->
     <nav class="navbar">
       <div class="navbar-left">
         <a href="{% url 'home' %}" class="navbar-brand">PBMate</a>
-        <a href="/problems" class="nav-link">Problems</a>
+        <a href="{% url 'problems' %}" class="nav-link">Problems</a>
+        <a href="{% url 'practice' %}" class="nav-link">Practice</a> <!-- <<< ADDED THIS LINK -->
         <a
           href="{% url 'daily_challenge' %}"
           class="nav-link"
-          style="
-            background: linear-gradient(
-              135deg,
-              rgba(255, 215, 0, 0.2) 0%,
-              rgba(255, 193, 7, 0.2) 100%
-            );
-            font-weight: 600;
-          "
-          >🏆 Daily Challenge</a
+          style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 193, 7, 0.2) 100%); font-weight: 600;"
+          >Daily Challenge</a
         >
-        <a href="/leaderboard" class="nav-link">Leaderboard</a>
+        <a href="{% url 'leaderboard' %}" class="nav-link">Leaderboard</a>
 
         {% if user.is_authenticated %}
         <a href="{% url 'my_history' %}" class="nav-link">My History</a>
         {% endif %}
-        <a href="{% url 'problem_history' %}" class="nav-link"
-          >Global History</a
-        >
+        <a href="{% url 'problem_history' %}" class="nav-link">Global History</a>
+
         {% if user.is_authenticated and user.is_staff %}
         <a
           href="{% url 'admin' %}"
           class="nav-link"
-          style="
-            background: linear-gradient(
-              135deg,
-              rgba(255, 193, 7, 0.2) 0%,
-              rgba(255, 152, 0, 0.2) 100%
-            );
-          "
-          >Admin 👑</a
+          style=" background: linear-gradient( 135deg, rgba(255, 193, 7, 0.2) 0%, rgba(255, 152, 0, 0.2) 100% );"
+          >Admin</a
         >
         {% endif %}
       </div>
@@ -586,6 +612,7 @@
       </div>
     </nav>
 
+    <!-- Page Content -->
     <div class="page-wrapper">
       <div class="container">
         {% if messages %}
