@@ -15,7 +15,7 @@ class Problem(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     def __str__(self):
         return f"{self.question} = {self.answer} (Difficulty: {self.difficulty})"
-    
+
 class Submission(models.Model):
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE)
     problem = models.ForeignKey(Problem, on_delete=models.CASCADE)
@@ -34,13 +34,13 @@ class DailyChallenge(models.Model):
     bonus_points = models.IntegerField(default=10)  # Extra points for completing daily challenge
     completed_by = models.ManyToManyField('auth.User', related_name='completed_challenges', blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         ordering = ['-date']
-    
+
     def __str__(self):
         return f"Daily Challenge for {self.date}: {self.problem.question}"
-    
+
     @classmethod
     def get_today_challenge(cls):
         """Get or create today's challenge"""
@@ -54,12 +54,12 @@ class DailyChallenge(models.Model):
             if not hard_problems.exists():
                 # Fallback to any problem if no hard ones exist
                 hard_problems = Problem.objects.all()
-                
+
             if hard_problems.exists():
                 problem = choice(hard_problems)
                 return cls.objects.create(date=today, problem=problem)
             return None # No problems in DB at all
-    
+
     def is_completed_by(self, user):
         """Check if user has completed this challenge"""
         return user in self.completed_by.all()
@@ -73,11 +73,15 @@ class UserProfile(models.Model):
     """
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     points = models.IntegerField(default=0)
-    
+
     # --- ADDED FOR STREAKS ---
     current_streak = models.IntegerField(default=0)
     last_daily_challenge_date = models.DateField(null=True, blank=True)
     # -------------------------
+
+    # --- ADDED FOR AVATAR ---
+    avatar = models.CharField(max_length=5, default='👤') # Allow a bit more length for complex emojis
+    # ------------------------
 
     def __str__(self):
         return f"{self.user.username}'s Profile ({self.points} points)"

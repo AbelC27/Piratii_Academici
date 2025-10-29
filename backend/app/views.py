@@ -8,10 +8,11 @@ from django.views.decorators.http import require_http_methods
 from datetime import date, timedelta # Import timedelta
 import json
 
-from .forms import LoginForm, UserRegistrationForm
+from .forms import LoginForm, UserRegistrationForm, ProblemForm
 from .models import Problem, Submission, DailyChallenge, UserProfile # Import UserProfile
 # --- NEW: Import the generator ---
 from . import problem_generator 
+from django.shortcuts import get_object_or_404
 
 
 # Andi
@@ -191,67 +192,90 @@ def logout_view(request):
 
 def home_view(request):
     return render(request, 'app/home.html')
+# ... (imports remain the same) ...
+
+# Andi, Sergiu, etc views remain the same
 
 @login_required # Apply login_required decorator
 def profile_view(request):
+    # ... (this view remains the same, profile object already has avatar) ...
     if not request.user.is_authenticated:
         return redirect('login')
-        
-    # --- MODIFIED: Fetch profile to show points ---
+
     try:
         profile = request.user.userprofile
     except UserProfile.DoesNotExist:
         profile = UserProfile.objects.create(user=request.user) # Create if missing
 
-    # --- Fetch Streak Info (NOW IMPLEMENTED) ---
-    current_streak = getattr(profile, 'current_streak', 0) 
+    current_streak = getattr(profile, 'current_streak', 0)
 
     return render(request, 'app/profile.html', {
-        'user': request.user, 
+        'user': request.user,
         'profile': profile,
-        'current_streak': current_streak # <-- PASS STREAK
+        'current_streak': current_streak
     })
 
 
 @login_required
 def edit_profile_view(request):
     user = request.user
+    # --- GET PROFILE FOR CURRENT AVATAR ---
+    try:
+        profile = user.userprofile
+    except UserProfile.DoesNotExist:
+        profile = UserProfile.objects.create(user=user)
 
     if request.method == "POST":
         username = request.POST.get("username")
         email = request.POST.get("email")
         password = request.POST.get("password")
-        # --- Add Avatar handling later ---
-        # avatar_emoji = request.POST.get("avatar_emoji") 
+        # --- GET AVATAR ---
+        avatar_emoji = request.POST.get("avatar_emoji")
 
-        if username:
+        error_occurred = False # Flag to prevent redirect if validation fails
+
+        # --- Basic Avatar Validation ---
+        if avatar_emoji:
+            # Simple check: is it likely an emoji? (Very basic check)
+            # More robust validation might involve checking Unicode ranges
+            if len(avatar_emoji) > 2 and not avatar_emoji.startswith((':', '<')): # Avoid things like :smile: or <img..>
+                 profile.avatar = avatar_emoji[0] # Try taking the first char if too long
+                 # You could add a message here: messages.warning(request, "Avatar trimmed.")
+            elif len(avatar_emoji) <= 2 and len(avatar_emoji)>0:
+                 profile.avatar = avatar_emoji
+            else:
+                 messages.error(request, "Invalid Avatar format. Please use a single emoji.")
+                 error_occurred = True
+        else:
+             # Option: Set default if empty, or keep current
+             profile.avatar = '👤' # Reset to default if submitted empty
+
+        # --- Update User Fields ---
+        if username and username != user.username:
+            # Add validation if needed (e.g., check if username exists)
             user.username = username
-        if email:
+        if email != user.email:
+            # Add validation if needed (e.g., check if email exists)
             user.email = email
         if password:
+            # Add password validation if desired
             user.set_password(password)
 
-        # --- Save Avatar later ---
-        # try:
-        #    profile = user.userprofile
-        #    profile.avatar = avatar_emoji 
-        #    profile.save()
-        # except UserProfile.DoesNotExist:
-        #    pass
+        if not error_occurred:
+            user.save()
+            profile.save() # Save profile changes (avatar)
+            messages.success(request, "Profilul tău a fost actualizat cu succes!")
+            return redirect("profile")
+        # If error occurred, fall through to render the form again with error messages
 
-        user.save()
-        messages.success(request, "Profilul tău a fost actualizat cu succes!")
-        return redirect("profile")
-
-    # --- Pass current Avatar later ---
-    # current_avatar = getattr(user.userprofile, 'avatar', '👤')
+    current_avatar = profile.avatar # Pass current avatar to template
 
     return render(request, "app/edit_profile.html", {
         "user": user,
-        # "current_avatar": current_avatar 
+        "current_avatar": current_avatar # Pass current avatar
     })
-# Abel
 
+# ... (rest of the views remain the same) ...
 
 # --- NEW FEATURE: My History View ---
 @login_required
@@ -536,3 +560,62 @@ def practice_view(request):
         'current_difficulty': difficulty,
     }
     return render(request, 'app/practice.html', context)
+
+@login_required
+@user_passes_test(is_admin)
+def admin_problem_list(request):
+    """Lists all problems for admin management."""
+    problems = Problem.objects.order_by('-created_at')
+    context = {'problems': problems}
+    return render(request, 'app/admin_problem_list.html', context)
+
+@login_required
+@user_passes_test(is_admin)
+def admin_problem_add(request):
+    """Handles adding a new problem."""
+    if request.method == 'POST':
+        form = ProblemForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Problem added successfully!')
+            return redirect('admin_problem_list')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = ProblemForm()
+
+    context = {'form': form, 'form_title': 'Add New Problem'}
+    return render(request, 'app/admin_problem_form.html', context)
+
+@login_required
+@user_passes_test(is_admin)
+def admin_problem_edit(request, problem_id):
+    """Handles editing an existing problem."""
+    problem = get_object_or_404(Problem, id=problem_id)
+    if request.method == 'POST':
+        form = ProblemForm(request.POST, instance=problem)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Problem #{problem_id} updated successfully!')
+            return redirect('admin_problem_list')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = ProblemForm(instance=problem)
+
+    context = {'form': form, 'problem': problem, 'form_title': f'Edit Problem #{problem_id}'}
+    return render(request, 'app/admin_problem_form.html', context)
+
+@login_required
+@user_passes_test(is_admin)
+@require_http_methods(["POST"]) # Ensure this view only handles POST requests for safety
+def admin_problem_delete(request, problem_id):
+    """Handles deleting a problem."""
+    problem = get_object_or_404(Problem, id=problem_id)
+    try:
+        problem_question = problem.question # Get question before deleting
+        problem.delete()
+        messages.success(request, f'Problem "{problem_question}" deleted successfully!')
+    except Exception as e:
+        messages.error(request, f'Error deleting problem: {e}')
+    return redirect('admin_problem_list')

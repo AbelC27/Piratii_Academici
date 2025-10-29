@@ -2,7 +2,7 @@ from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
 import re
-
+from .models import Problem
 
 class UserRegistrationForm(forms.ModelForm):
     password = forms.CharField(
@@ -99,3 +99,27 @@ class LoginForm(forms.Form):
             'placeholder': 'Enter your password'
         })
     )
+
+class ProblemForm(forms.ModelForm):
+    class Meta:
+        model = Problem
+        fields = ['question', 'answer', 'difficulty']
+        widgets = {
+            'question': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., 5 + 7 or What is 10 x 3?'}),
+            'answer': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., 12 or 30'}),
+            'difficulty': forms.Select(choices=[('easy', 'Easy'), ('medium', 'Medium'), ('hard', 'Hard')], attrs={'class': 'form-control'}),
+        }
+
+    def clean_difficulty(self):
+        difficulty = self.cleaned_data.get('difficulty', '').lower()
+        if difficulty not in ['easy', 'medium', 'hard']:
+            raise forms.ValidationError("Difficulty must be 'easy', 'medium', or 'hard'.")
+        return difficulty
+
+    def clean_answer(self):
+        # Basic check: Ensure answer isn't empty
+        answer = self.cleaned_data.get('answer', '').strip()
+        if not answer:
+            raise forms.ValidationError("Answer cannot be empty.")
+        # You could add more validation here (e.g., try converting to number)
+        return answer

@@ -1,0 +1,69 @@
+{% extends 'app/base.html' %}
+{% block title %}Manage Problems - Admin{% endblock %}
+
+{% block content %}
+<style>
+    /* Wider container for this page */
+    .container { max-width: 1200px; }
+    .page-header { text-align: center; margin-bottom: 2rem; }
+    .problem-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    .problem-table th, .problem-table td { padding: 0.75rem 1rem; border: 1px solid #eee; text-align: left; }
+    .problem-table thead { background-color: #f8f9fa; }
+    .problem-table th { font-weight: 600; }
+    .actions a, .actions button { margin-right: 0.5rem; text-decoration: none; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.8rem; }
+    .btn-edit { background-color: #ffc107; color: #333; }
+    .btn-delete { background-color: #dc3545; color: white; border: none; cursor: pointer; }
+    .btn-add { display: inline-block; background: #28a745; color: white; padding: 0.6rem 1.2rem; border-radius: 5px; text-decoration: none; margin-bottom: 1rem; }
+    .difficulty-badge { padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.75rem; font-weight: 500; text-transform: capitalize; display: inline-block; }
+    .difficulty-easy { background-color: #d4edda; color: #155724; }
+    .difficulty-medium { background-color: #fff3cd; color: #856404; }
+    .difficulty-hard { background-color: #f8d7da; color: #721c24; }
+    .no-problems { text-align: center; color: #666; padding: 2rem; }
+</style>
+
+<div class="page-header">
+    <h1>🧩 Manage Problems</h1>
+    <a href="{% url 'admin_problem_add' %}" class="btn-add">➕ Add New Problem</a>
+    <a href="{% url 'admin' %}" class="btn-back" style="margin-left: 1rem; padding: 0.6rem 1.2rem;">⬅️ Back to Admin Dashboard</a>
+</div>
+
+{% if problems %}
+<div style="overflow-x: auto;">
+    <table class="problem-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Question</th>
+                <th>Answer</th>
+                <th>Difficulty</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for problem in problems %}
+            <tr>
+                <td>#{{ problem.id }}</td>
+                <td>{{ problem.question }}</td>
+                <td>{{ problem.answer }}</td>
+                <td><span class="difficulty-badge difficulty-{{ problem.difficulty|lower }}">{{ problem.difficulty }}</span></td>
+                <td>{{ problem.created_at|date:"Y-m-d H:i" }}</td>
+                <td class="actions">
+                    <a href="{% url 'admin_problem_edit' problem.id %}" class="btn-edit">✏️ Edit</a>
+                    
+                    {% comment %} FIXED: Use escapejs filter for the question text {% endcomment %}
+                    <form method="post" action="{% url 'admin_problem_delete' problem.id %}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete problem #{{ problem.id }}?\n{{ problem.question|escapejs }}');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-delete">🗑️ Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+    <p class="no-problems">No problems found in the database.</p>
+{% endif %}
+
+{% endblock %}

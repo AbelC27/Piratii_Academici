@@ -87,6 +87,26 @@
         font-weight: 500;
     }
 
+    /* --- ADDED Style for Manage Problems Button --- */
+    .manage-problems-btn {
+        display: block; /* Make it a block element */
+        width: fit-content; /* Only as wide as needed */
+        margin: 1.5rem auto; /* Center it */
+        padding: 0.8rem 1.5rem;
+        background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: 600;
+        text-align: center;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
+    }
+    .manage-problems-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(23, 162, 184, 0.4);
+    }
+
     .search-box {
         margin-bottom: 1.5rem;
         animation: fadeIn 0.6s ease-out 0.3s both;
@@ -285,7 +305,6 @@
     <p>Manage all users and their permissions</p>
 </div>
 
-<!-- Statistics Cards -->
 <div class="stats-container">
     <div class="stat-card">
         <h3>{{ total_users }}</h3>
@@ -301,12 +320,14 @@
     </div>
 </div>
 
-<!-- Search Box -->
+<div>
+    <a href="{% url 'admin_problem_list' %}" class="manage-problems-btn">🧩 Manage Problems</a>
+</div>
+
 <div class="search-box">
     <input type="text" id="searchInput" placeholder="🔍 Search users by username or email..." onkeyup="filterUsers()">
 </div>
 
-<!-- Users Table -->
 <div class="users-table-wrapper">
     {% if users %}
     <table class="users-table" id="usersTable">
@@ -352,16 +373,14 @@
                 <td>{{ user_obj.date_joined|date:"M d, Y" }}</td>
                 <td>
                     <div class="action-buttons">
-                        <!-- Edit Button -->
                         <a href="{% url 'edit_user' user_obj.id %}" class="btn-action btn-edit" title="Edit User">
                             ✏️ Edit
                         </a>
-                        
-                        <!-- Promote/Demote Admin Button -->
+
                         {% if user_obj.is_staff %}
                             <form method="POST" action="{% url 'demote_admin' user_obj.id %}" style="display: inline;">
                                 {% csrf_token %}
-                                <button type="submit" class="btn-action btn-demote" title="Remove Admin Privileges" 
+                                <button type="submit" class="btn-action btn-demote" title="Remove Admin Privileges"
                                         onclick="return confirm('Remove admin privileges from {{ user_obj.username }}?')">
                                     ⬇️ Demote
                                 </button>
@@ -369,17 +388,16 @@
                         {% else %}
                             <form method="POST" action="{% url 'promote_admin' user_obj.id %}" style="display: inline;">
                                 {% csrf_token %}
-                                <button type="submit" class="btn-action btn-promote" title="Make Admin" 
+                                <button type="submit" class="btn-action btn-promote" title="Make Admin"
                                         onclick="return confirm('Make {{ user_obj.username }} an admin?')">
                                     ⬆️ Promote
                                 </button>
                             </form>
                         {% endif %}
-                        
-                        <!-- Delete Button -->
+
                         <form method="POST" action="{% url 'delete_user' user_obj.id %}" style="display: inline;">
                             {% csrf_token %}
-                            <button type="submit" class="btn-action btn-delete" title="Delete User" 
+                            <button type="submit" class="btn-action btn-delete" title="Delete User"
                                     onclick="return confirm('⚠️ Are you sure you want to delete {{ user_obj.username }}? This action cannot be undone!')">
                                 🗑️ Delete
                             </button>
@@ -405,22 +423,22 @@
             const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
             let adminCount = 0;
             let activeCount = 0;
-            
+
             for (let i = 0; i < rows.length; i++) {
                 const roleBadge = rows[i].getElementsByTagName('td')[4];
                 const statusBadge = rows[i].getElementsByTagName('td')[5];
-                
+
                 // Count admins (check for Admin or Superuser badge)
                 if (roleBadge && (roleBadge.textContent.includes('Admin') || roleBadge.textContent.includes('Superuser'))) {
                     adminCount++;
                 }
-                
+
                 // Count active users
                 if (statusBadge && statusBadge.textContent.includes('Active')) {
                     activeCount++;
                 }
             }
-            
+
             document.getElementById('adminCount').textContent = adminCount;
             document.getElementById('activeCount').textContent = activeCount;
         }
@@ -435,12 +453,12 @@
         for (let i = 1; i < rows.length; i++) {
             const username = rows[i].getElementsByTagName('td')[1];
             const email = rows[i].getElementsByTagName('td')[2];
-            
+
             if (username || email) {
                 const usernameText = username.textContent || username.innerText;
                 const emailText = email.textContent || email.innerText;
-                
-                if (usernameText.toLowerCase().indexOf(filter) > -1 || 
+
+                if (usernameText.toLowerCase().indexOf(filter) > -1 ||
                     emailText.toLowerCase().indexOf(filter) > -1) {
                     rows[i].style.display = '';
                 } else {

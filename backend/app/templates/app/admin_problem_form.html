@@ -1,0 +1,60 @@
+
+{% extends 'app/base.html' %}
+{% block title %}{{ form_title }} - Admin{% endblock %}
+
+{% block content %}
+<style>
+    /* Smaller container for forms */
+    .container { max-width: 700px; }
+    .page-header { text-align: center; margin-bottom: 2rem; }
+    /* Reusing form styles from base.html */
+</style>
+
+<div class="page-header">
+    <h1>{{ form_title }}</h1>
+</div>
+
+<form method="post">
+    {% csrf_token %}
+
+    <div class="form-group">
+        <label for="{{ form.question.id_for_label }}">Question</label>
+        {{ form.question }}
+        {% if form.question.errors %}
+            <div class="form-errors">
+                <ul>{% for error in form.question.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="form-group">
+        <label for="{{ form.answer.id_for_label }}">Answer</label>
+        {{ form.answer }}
+        {% if form.answer.errors %}
+            <div class="form-errors">
+                <ul>{% for error in form.answer.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="form-group">
+        <label for="{{ form.difficulty.id_for_label }}">Difficulty</label>
+        {{ form.difficulty }}
+        {% if form.difficulty.errors %}
+            <div class="form-errors">
+                <ul>{% for error in form.difficulty.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+            </div>
+        {% endif %}
+    </div>
+
+    {% if form.non_field_errors %}
+        <div class="form-errors">
+            <ul>{% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}</ul>
+        </div>
+    {% endif %}
+
+    <button type="submit" class="btn">💾 {% if problem %}Save Changes{% else %}Add Problem{% endif %}</button>
+    <a href="{% url 'admin_problem_list' %}" class="btn-back">❌ Cancel</a>
+</form>
+
+{% endblock %}
