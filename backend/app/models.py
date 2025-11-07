@@ -134,3 +134,133 @@ class SpeedRunAttempt(models.Model):
 
     def __str__(self):
         return f"{self.user.username}'s attempt: {self.score} points ({self.created_at.date()})"
+
+
+# --- PIRATE MAP JOURNEY FEATURE ---
+class MapCheckpoint(models.Model):
+    """
+    Represents a checkpoint/island on the pirate map journey.
+    Users unlock checkpoints sequentially by solving problems.
+    """
+    DIFFICULTY_LEVELS = [
+        (1, 'Beginner Bay'),
+        (2, 'Sailor\'s Strait'),
+        (3, 'Corsair Cove'),
+        (4, 'Captain\'s Channel'),
+        (5, 'Legend\'s Lagoon'),
+    ]
+    
+    checkpoint_number = models.IntegerField(unique=True, db_index=True)  # Sequential order (1, 2, 3...)
+    name = models.CharField(max_length=100)  # e.g., "Treasure Island", "Skull Cove"
+    description = models.TextField(blank=True)  # Lore/story for the checkpoint
+    emoji = models.CharField(max_length=10, default='🏝️')  # Visual representation
+    difficulty_level = models.IntegerField(choices=DIFFICULTY_LEVELS, default=1)
+    
+    # Position on the map (for visual display)
+    position_x = models.IntegerField(default=0)  # X coordinate percentage (0-100)
+    position_y = models.IntegerField(default=0)  # Y coordinate percentage (0-100)
+    
+    # Requirements
+    problems_to_unlock = models.IntegerField(default=3)  # Number of problems to solve to unlock next
+    points_reward = models.IntegerField(default=10)  # Points awarded when completing this checkpoint
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['checkpoint_number']
+    
+    def __str__(self):
+        return f"#{self.checkpoint_number}: {self.name} ({self.emoji})"
+    
+    @property
+    def next_checkpoint(self):
+        """Get the next checkpoint in sequence"""
+        try:
+            return MapCheckpoint.objects.get(checkpoint_number=self.checkpoint_number + 1)
+        except MapCheckpoint.DoesNotExist:
+            return None
+    
+    @property
+    def previous_checkpoint(self):
+        """Get the previous checkpoint in sequence"""
+        if self.checkpoint_number <= 1:
+            return None
+        try:
+            return MapCheckpoint.objects.get(checkpoint_number=self.checkpoint_number - 1)
+        except MapCheckpoint.DoesNotExist:
+            return None
+
+
+class UserProgress(models.Model):
+    """
+    Tracks each user's progress through the pirate map journey.
+    """
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='map_progress')
+    current_checkpoint = models.ForeignKey(
+        MapCheckpoint, 
+        on_delete=models.SET_NULL, 
+        null=True,
+        related_name='current_users'
+    )
+    
+    # Tracking
+    problems_solved_at_current = models.IntegerField(default=0)  # Progress at current checkpoint
+    total_checkpoints_completed = models.IntegerField(default=0)
+    total_map_problems_solved = models.IntegerField(default=0)
+    
+    # Timestamps
+    journey_started_at = models.DateTimeField(auto_now_add=True)
+    last_activity = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'User Map Progress'
+        verbose_name_plural = 'User Map Progresses'
+    
+    def __str__(self):
+        checkpoint_name = self.current_checkpoint.name if self.current_checkpoint else "Not Started"
+        return f"{self.user.username} - At: {checkpoint_name}"
+    
+    def can_advance(self):
+        """Check if user can advance to next checkpoint"""
+        if not self.current_checkpoint:
+            return False
+        return self.problems_solved_at_current >= self.current_checkpoint.problems_to_unlock
+    
+    def advance_to_next_checkpoint(self):
+        """Move user to the next checkpoint if requirements are met"""
+        if not self.can_advance():
+            return False
+        
+        next_checkpoint = self.current_checkpoint.next_checkpoint
+        if next_checkpoint:
+            # Award points for completing checkpoint
+            self.user.userprofile.points += self.current_checkpoint.points_reward
+            self.user.userprofile.save()
+            
+            # Move to next checkpoint
+            self.current_checkpoint = next_checkpoint
+            self.problems_solved_at_current = 0
+            self.total_checkpoints_completed += 1
+            self.save()
+            return True
+        return False  # No more checkpoints
+    
+    def record_problem_solved(self):
+        """Record that user solved a problem at current checkpoint"""
+        self.problems_solved_at_current += 1
+        self.total_map_problems_solved += 1
+        self.save()
+        
+        # Check if can auto-advance
+        if self.can_advance():
+            return self.advance_to_next_checkpoint()
+        return False
+
+
+@receiver(post_save, sender=User)
+def create_user_progress(sender, instance, created, **kwargs):
+    """Create UserProgress when a new User is created."""
+    if created:
+        # Get the first checkpoint or create user progress without checkpoint
+        first_checkpoint = MapCheckpoint.objects.filter(checkpoint_number=1).first()
+        UserProgress.objects.create(user=instance, current_checkpoint=first_checkpoint)

@@ -1,0 +1,834 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Pirate Map Journey - PBMate{% endblock %}
+
+{% block content %}
+<style>
+    .container {
+        max-width: 1400px !important;
+        padding: 2rem;
+    }
+
+    .map-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .map-header h1 {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .progress-info {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        padding: 1.5rem;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .progress-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 1rem;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .stat-label {
+        color: #666;
+        font-size: 0.9rem;
+        margin-top: 0.5rem;
+    }
+
+    .progress-bar-container {
+        background: #e0e0e0;
+        height: 30px;
+        border-radius: 15px;
+        overflow: hidden;
+        position: relative;
+        margin-top: 1rem;
+    }
+
+    .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        transition: width 0.5s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+    }
+
+    .map-container {
+        position: relative;
+        background-image: url('/static/app/images/treasure_map_bg.jpg');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        min-height: 700px;
+        height: 80vh;
+        border-radius: 20px;
+        margin-bottom: 2rem;
+        overflow: hidden;
+        box-shadow: 
+            0 15px 50px rgba(0, 0, 0, 0.5),
+            inset 0 0 0 8px rgba(139, 69, 19, 0.6),
+            inset 0 0 30px rgba(0, 0, 0, 0.3);
+        border: 8px solid #6B4423;
+        position: relative;
+    }
+    
+    .map-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: 
+            repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(139, 69, 19, 0.03) 2px,
+                rgba(139, 69, 19, 0.03) 4px
+            );
+        pointer-events: none;
+    }
+    
+    /* Compass decoration */
+    .map-container::after {
+        content: '�';
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        font-size: 3rem;
+        animation: spin 20s linear infinite;
+        filter: drop-shadow(3px 3px 5px rgba(0, 0, 0, 0.5));
+    }
+    
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    
+    @keyframes float {
+        0%, 100% { transform: translateY(0px) translateX(0px); }
+        25% { transform: translateY(-20px) translateX(10px); }
+        50% { transform: translateY(0px) translateX(20px); }
+        75% { transform: translateY(-20px) translateX(10px); }
+    }
+    
+    @keyframes swim {
+        0% { transform: translateX(-100vw); }
+        100% { transform: translateX(100vw); }
+    }
+
+    .map-path {
+        position: relative;
+        height: 100%;
+        width: 100%;
+    }
+    
+    /* Checkpoint positioning using absolute positioning */
+    .checkpoint {
+        position: absolute;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        z-index: 10;
+    }
+    
+    .checkpoint:hover {
+        transform: scale(1.1);
+        z-index: 20;
+    }
+    
+    /* Dotted path between checkpoints */
+    .checkpoint:not(:last-child)::before {
+        content: '';
+        position: absolute;
+        width: 100px;
+        height: 3px;
+        background-image: repeating-linear-gradient(
+            to right,
+            #8B4513 0px,
+            #8B4513 10px,
+            transparent 10px,
+            transparent 20px
+        );
+        top: 50%;
+        left: 100%;
+        transform: translateY(-50%);
+        z-index: -1;
+    }
+    
+    /* Position each checkpoint on the map */
+    .checkpoint:nth-child(1) { top: 75%; left: 15%; }  /* Rookie Bay - bottom left */
+    .checkpoint:nth-child(2) { top: 65%; left: 28%; }  /* Calculation Cove */
+    .checkpoint:nth-child(3) { top: 45%; left: 22%; }  /* Fraction Fjord */
+    .checkpoint:nth-child(4) { top: 30%; left: 35%; }  /* Algebra Archipelago */
+    .checkpoint:nth-child(5) { top: 25%; left: 52%; }  /* Equation Estuary */
+    .checkpoint:nth-child(6) { top: 35%; left: 68%; }  /* Geometry Gulf */
+    .checkpoint:nth-child(7) { top: 50%; left: 75%; }  /* Problem Port */
+    .checkpoint:nth-child(8) { top: 65%; left: 70%; }  /* Treasure Island */
+    .checkpoint:nth-child(9) { top: 75%; left: 55%; }  /* Captain's Challenge */
+    .checkpoint:nth-child(10) { top: 80%; left: 40%; } /* Legend's Lagoon */
+        text-align: center;
+        transition: all 0.5s ease;
+        z-index: 10;
+    }
+    
+    .checkpoint::before {
+        content: '';
+        position: absolute;
+        width: 180px;
+        height: 120px;
+        background: 
+            radial-gradient(ellipse at center, #d4a574 0%, #c19a6b 40%, #8B7355 70%, transparent 100%);
+        border-radius: 50% 50% 45% 45%;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -20%);
+        z-index: -1;
+        box-shadow: 
+            0 8px 20px rgba(0, 0, 0, 0.4),
+            inset 0 -20px 30px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* Palm trees on islands */
+    .checkpoint::after {
+        content: '🌴';
+        position: absolute;
+        font-size: 2rem;
+        bottom: 20px;
+        right: -10px;
+        z-index: 1;
+        filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+        animation: palmSway 4s ease-in-out infinite;
+    }
+    
+    @keyframes palmSway {
+        0%, 100% { transform: rotate(0deg); }
+        25% { transform: rotate(3deg); }
+        75% { transform: rotate(-3deg); }
+    }
+
+    .checkpoint-icon {
+        width: 80px;
+        height: 80px;
+        font-size: 4rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        filter: drop-shadow(0 8px 15px rgba(0, 0, 0, 0.4));
+        position: relative;
+        animation: float 3s ease-in-out infinite;
+    }
+    
+    @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+    }
+    
+    .checkpoint-icon::after {
+        content: '';
+        position: absolute;
+        width: 60px;
+        height: 20px;
+        background: radial-gradient(ellipse, rgba(0,0,0,0.3) 0%, transparent 70%);
+        bottom: -25px;
+        left: 50%;
+        transform: translateX(-50%);
+        border-radius: 50%;
+        animation: shadowPulse 3s ease-in-out infinite;
+    }
+    
+    @keyframes shadowPulse {
+        0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.3; }
+        50% { transform: translateX(-50%) scale(0.8); opacity: 0.5; }
+    }
+
+    .checkpoint.locked .checkpoint-icon {
+        filter: grayscale(100%) brightness(0.5) drop-shadow(0 5px 10px rgba(0, 0, 0, 0.5));
+        opacity: 0.6;
+        transform: scale(0.8);
+    }
+
+    .checkpoint.current .checkpoint-icon {
+        animation: treasureBounce 1s ease-in-out infinite, float 3s ease-in-out infinite;
+        filter: drop-shadow(0 0 30px rgba(255, 215, 0, 0.8)) drop-shadow(0 8px 20px rgba(0, 0, 0, 0.5));
+        transform: scale(1.3);
+    }
+    
+    @keyframes treasureBounce {
+        0%, 100% { transform: scale(1.3) translateY(0px); }
+        50% { transform: scale(1.4) translateY(-15px); }
+    }
+
+    .checkpoint.completed .checkpoint-icon {
+        filter: drop-shadow(0 5px 15px rgba(86, 171, 47, 0.6));
+        opacity: 0.85;
+    }
+
+    .checkpoint.unlocked .checkpoint-icon {
+        filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.4));
+    }
+
+    .checkpoint-info {
+        background: rgba(255, 248, 220, 0.95);
+        padding: 0.8rem 1.2rem;
+        border-radius: 12px;
+        box-shadow: 
+            0 5px 20px rgba(0, 0, 0, 0.3),
+            inset 0 0 0 2px rgba(139, 69, 19, 0.3);
+        min-width: 150px;
+        text-align: center;
+        margin-top: 1rem;
+        border: 2px solid #8B4513;
+        position: relative;
+    }
+    
+    .checkpoint-info::before {
+        content: '';
+        position: absolute;
+        top: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 0;
+        border-left: 8px solid transparent;
+        border-right: 8px solid transparent;
+        border-bottom: 8px solid #8B4513;
+    }
+
+    .checkpoint-name {
+        font-weight: 800;
+        color: #2c1810;
+        margin-bottom: 0.3rem;
+        font-size: 1rem;
+        text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.7);
+        font-family: 'Georgia', serif;
+    }
+
+    .checkpoint-number {
+        color: #764ba2;
+        font-size: 0.85rem;
+        font-weight: 600;
+        background: rgba(118, 75, 162, 0.1);
+        padding: 2px 8px;
+        border-radius: 10px;
+        display: inline-block;
+    }
+
+    .checkpoint.locked .checkpoint-info {
+        opacity: 0.7;
+        background: rgba(200, 200, 200, 0.9);
+    }
+    
+    .checkpoint.current .checkpoint-info {
+        background: rgba(255, 215, 0, 0.95);
+        box-shadow: 
+            0 8px 25px rgba(255, 215, 0, 0.5),
+            inset 0 0 0 2px rgba(218, 165, 32, 0.5);
+        border-color: #DAA520;
+        animation: infoPulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes infoPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+    
+    .checkpoint.completed .checkpoint-info {
+        background: rgba(168, 224, 99, 0.95);
+        border-color: #56ab2f;
+    }
+    
+    /* Decorative elements on map */
+    .map-decorations {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 5;
+    }
+    
+    .pirate-flag {
+        position: absolute;
+        top: 15px;
+        right: 30px;
+        font-size: 3.5rem;
+        animation: flagWave 3s ease-in-out infinite;
+        filter: drop-shadow(4px 4px 6px rgba(0, 0, 0, 0.6));
+    }
+    
+    @keyframes flagWave {
+        0%, 100% { transform: rotate(-8deg); }
+        50% { transform: rotate(8deg); }
+    }
+    
+    .ship-decoration {
+        position: absolute;
+        font-size: 3rem;
+        animation: sailing 40s linear infinite;
+        filter: drop-shadow(3px 3px 5px rgba(0, 0, 0, 0.4));
+    }
+    
+    @keyframes sailing {
+        0% { 
+            left: -100px;
+            transform: scaleX(1);
+        }
+        45% { 
+            left: calc(50% - 50px);
+            transform: scaleX(1);
+        }
+        55% {
+            left: calc(50% - 50px);
+            transform: scaleX(-1);
+        }
+        100% { 
+            left: calc(100% + 100px);
+            transform: scaleX(-1);
+        }
+    }
+    
+    .kraken {
+        position: absolute;
+        bottom: 50px;
+        right: 15%;
+        font-size: 3.5rem;
+        animation: tentacles 5s ease-in-out infinite;
+        opacity: 0.8;
+        filter: drop-shadow(3px 3px 5px rgba(0, 0, 0, 0.5));
+    }
+    
+    @keyframes tentacles {
+        0%, 100% { transform: scale(1) rotate(0deg); }
+        25% { transform: scale(1.15) rotate(-10deg); }
+        75% { transform: scale(0.9) rotate(10deg); }
+    }
+    
+    .anchor-decoration {
+        position: absolute;
+        bottom: 20px;
+        left: 30px;
+        font-size: 2.5rem;
+        opacity: 0.7;
+        animation: swing 4s ease-in-out infinite;
+        transform-origin: top center;
+        filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.5));
+    }
+    
+    @keyframes swing {
+        0%, 100% { transform: rotate(-15deg); }
+        50% { transform: rotate(15deg); }
+    }
+
+    .problems-section {
+        background: white;
+        padding: 2rem;
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .problems-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .problems-header h2 {
+        color: #333;
+    }
+
+    .problem-card {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+        border: 2px solid transparent;
+        transition: all 0.3s ease;
+    }
+
+    .problem-card:hover {
+        border-color: #667eea;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+    }
+
+    .problem-question {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 1rem;
+    }
+
+    .answer-form {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+
+    .answer-input {
+        flex: 1;
+        padding: 0.75rem;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: border-color 0.3s ease;
+    }
+
+    .answer-input:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+
+    .submit-btn {
+        padding: 0.75rem 1.5rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .submit-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .result-message {
+        margin-top: 1rem;
+        padding: 1rem;
+        border-radius: 8px;
+        font-weight: 600;
+        text-align: center;
+        animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .result-message.correct {
+        background: #d4edda;
+        color: #155724;
+        border: 2px solid #c3e6cb;
+    }
+
+    .result-message.incorrect {
+        background: #f8d7da;
+        color: #721c24;
+        border: 2px solid #f5c6cb;
+    }
+
+    .advance-btn {
+        display: inline-block;
+        margin-top: 1rem;
+        padding: 1rem 2rem;
+        background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+        color: #333;
+        font-weight: bold;
+        font-size: 1.1rem;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 5px 20px rgba(255, 215, 0, 0.4);
+    }
+
+    .advance-btn:hover {
+        transform: translateY(-3px) scale(1.05);
+        box-shadow: 0 8px 25px rgba(255, 215, 0, 0.6);
+    }
+
+    .no-problems {
+        text-align: center;
+        padding: 3rem;
+        color: #666;
+    }
+
+    .journey-complete {
+        text-align: center;
+        padding: 3rem;
+        background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+        border-radius: 15px;
+        margin-top: 2rem;
+    }
+
+    .journey-complete h2 {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+    }
+</style>
+
+<div class="map-header">
+    <h1>🏴‍☠️ Pirate Map Journey 🗺️</h1>
+    <p>Sail through the seas and conquer mathematical islands!</p>
+</div>
+
+<div class="progress-info">
+    <div class="progress-stats">
+        <div class="stat-card">
+            <div class="stat-value">{{ current_checkpoint.checkpoint_number|default:0 }}</div>
+            <div class="stat-label">Current Checkpoint</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ user_progress.total_checkpoints_completed }}</div>
+            <div class="stat-label">Completed Checkpoints</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ user_progress.total_map_problems_solved }}</div>
+            <div class="stat-label">Total Problems Solved</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ user.userprofile.points }}</div>
+            <div class="stat-label">⭐ Total Points</div>
+        </div>
+    </div>
+
+    {% if current_checkpoint %}
+    <div class="progress-bar-container">
+        <div class="progress-bar" style="width: {{ progress_percentage }}%">
+            {{ user_progress.problems_solved_at_current }} / {{ current_checkpoint.problems_to_unlock }}
+        </div>
+    </div>
+    <p style="text-align: center; margin-top: 0.5rem; color: #666;">
+        Progress at {{ current_checkpoint.name }}
+    </p>
+    {% endif %}
+</div>
+
+<div class="map-container">
+    <div class="map-path">
+        {% for item in checkpoints %}
+        <div class="checkpoint {% if item.is_completed %}completed{% elif item.is_current %}current{% elif item.is_unlocked %}unlocked{% else %}locked{% endif %}">
+            <div class="checkpoint-icon" 
+                 title="{% if item.is_locked %}🔒 Locked{% elif item.is_completed %}✅ Completed{% elif item.is_current %}📍 Current Location{% else %}🔓 Unlocked{% endif %}">
+                {{ item.checkpoint.emoji }}
+                {% if item.is_completed %}
+                <span style="position: absolute; top: -5px; right: -5px; font-size: 2rem;">✅</span>
+                {% elif item.is_current %}
+                <span style="position: absolute; top: -5px; right: -5px; font-size: 2rem;">📍</span>
+                {% elif not item.is_unlocked %}
+                <span style="position: absolute; top: -5px; right: -5px; font-size: 2rem;">🔒</span>
+                {% endif %}
+            </div>
+            <div class="checkpoint-info">
+                <div class="checkpoint-number">Checkpoint #{{ item.checkpoint.checkpoint_number }}</div>
+                <div class="checkpoint-name">{{ item.checkpoint.name }}</div>
+                <div style="font-size: 0.8rem; color: #888; margin-top: 0.5rem;">
+                    {{ item.checkpoint.get_difficulty_level_display }}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Decorative elements -->
+    <div class="map-decorations">
+        <div class="pirate-flag">🏴‍☠️</div>
+        <div class="ship-decoration" style="top: 30%;">⛵</div>
+        <div class="kraken">🐙</div>
+        <div class="anchor-decoration">⚓</div>
+    </div>
+</div>
+
+{% if current_checkpoint %}
+<div class="problems-section">
+    <div class="problems-header">
+        <h2>⚓ Challenges at {{ current_checkpoint.name }}</h2>
+        {% if can_advance %}
+        <button onclick="advanceCheckpoint()" class="advance-btn">
+            ⛵ Set Sail to Next Island! →
+        </button>
+        {% endif %}
+    </div>
+
+    {% if current_problems %}
+        {% for problem in current_problems %}
+        <div class="problem-card" data-problem-id="{{ problem.id }}">
+            <div class="problem-question">{{ problem.question }} = ?</div>
+            <div class="answer-form">
+                <input type="number" 
+                       class="answer-input" 
+                       placeholder="Enter your answer..."
+                       id="answer-{{ problem.id }}">
+                <button onclick="submitAnswer({{ problem.id }})" class="submit-btn">
+                    Submit ⚔️
+                </button>
+            </div>
+            <div class="result-message" id="result-{{ problem.id }}" style="display: none;"></div>
+        </div>
+        {% endfor %}
+    {% else %}
+    <div class="no-problems">
+        <p style="font-size: 1.5rem;">🎉 No more problems at this checkpoint!</p>
+        {% if can_advance %}
+        <button onclick="advanceCheckpoint()" class="advance-btn">
+            ⛵ Ready to Advance! →
+        </button>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% else %}
+<div class="journey-complete">
+    <h2>🏆 Congratulations, Captain! 🏆</h2>
+    <p style="font-size: 1.2rem;">You've completed the entire pirate journey!</p>
+    <p style="font-size: 3rem; margin: 2rem 0;">🎊 🏴‍☠️ 🎊</p>
+    <p>Total Checkpoints Conquered: {{ user_progress.total_checkpoints_completed }}</p>
+    <p>Total Problems Solved: {{ user_progress.total_map_problems_solved }}</p>
+</div>
+{% endif %}
+
+<script>
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    async function submitAnswer(problemId) {
+        const answerInput = document.getElementById(`answer-${problemId}`);
+        const resultDiv = document.getElementById(`result-${problemId}`);
+        const answer = answerInput.value.trim();
+
+        if (!answer) {
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result-message incorrect';
+            resultDiv.textContent = 'Please enter an answer!';
+            return;
+        }
+
+        try {
+            const response = await fetch('{% url "solve_map_problem" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    problem_id: problemId,
+                    answer: answer
+                })
+            });
+
+            const data = await response.json();
+
+            resultDiv.style.display = 'block';
+            if (data.correct) {
+                resultDiv.className = 'result-message correct';
+                resultDiv.innerHTML = data.message;
+                answerInput.disabled = true;
+                
+                // Reload page if advanced to show new checkpoint
+                if (data.advanced) {
+                    setTimeout(() => location.reload(), 2000);
+                } else if (data.checkpoint_completed) {
+                    // Show advance button
+                    setTimeout(() => location.reload(), 1500);
+                }
+            } else {
+                resultDiv.className = 'result-message incorrect';
+                resultDiv.textContent = data.message;
+                if (data.correct_answer) {
+                    resultDiv.innerHTML += `<br>Correct answer: ${data.correct_answer}`;
+                }
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result-message incorrect';
+            resultDiv.textContent = 'Error submitting answer. Please try again.';
+        }
+    }
+
+    async function advanceCheckpoint() {
+        if (!confirm('Ready to sail to the next island? ⛵')) return;
+
+        try {
+            const response = await fetch('{% url "advance_checkpoint" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error advancing checkpoint. Please try again.');
+        }
+    }
+
+    // Allow Enter key to submit
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.answer-input').forEach(input => {
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    const problemId = input.id.split('-')[1];
+                    submitAnswer(problemId);
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

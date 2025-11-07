@@ -10,7 +10,7 @@ import json
 
 from .forms import LoginForm, UserRegistrationForm, ProblemForm
 # --- IMPORT SpeedRunAttempt ---
-from .models import Problem, Submission, DailyChallenge, UserProfile, SpeedRunAttempt
+from .models import Problem, Submission, DailyChallenge, UserProfile, SpeedRunAttempt, MapCheckpoint, UserProgress
 # --- NEW: Import the generator ---
 from . import problem_generator 
 from django.shortcuts import get_object_or_404
@@ -701,3 +701,193 @@ def admin_problem_delete(request, problem_id):
     except Exception as e:
         messages.error(request, f'Error deleting problem: {e}')
     return redirect('admin_problem_list')
+
+# ========================================
+# PIRATE MAP JOURNEY FEATURE
+# ========================================
+
+@login_required
+def pirate_map_view(request):
+    """
+    Display the pirate map with all checkpoints and user's current progress.
+    """
+    # Get or create user progress
+    user_progress, created = UserProgress.objects.get_or_create(
+        user=request.user,
+        defaults={'current_checkpoint': MapCheckpoint.objects.filter(checkpoint_number=1).first()}
+    )
+    
+    # Get all checkpoints
+    all_checkpoints = MapCheckpoint.objects.all().order_by('checkpoint_number')
+    
+    # Determine which checkpoints are unlocked
+    checkpoints_data = []
+    for checkpoint in all_checkpoints:
+        is_current = (user_progress.current_checkpoint == checkpoint)
+        is_unlocked = (checkpoint.checkpoint_number <= user_progress.current_checkpoint.checkpoint_number 
+                      if user_progress.current_checkpoint else False)
+        is_completed = (checkpoint.checkpoint_number < user_progress.current_checkpoint.checkpoint_number
+                       if user_progress.current_checkpoint else False)
+        
+        checkpoints_data.append({
+            'checkpoint': checkpoint,
+            'is_current': is_current,
+            'is_unlocked': is_unlocked,
+            'is_completed': is_completed,
+        })
+    
+    # Get available problems for current checkpoint (filter by difficulty)
+    current_problems = []
+    if user_progress.current_checkpoint:
+        # Map difficulty level to problem difficulty
+        difficulty_map = {
+            1: 'easy',
+            2: 'easy',
+            3: 'medium',
+            4: 'medium',
+            5: 'hard',
+        }
+        target_difficulty = difficulty_map.get(user_progress.current_checkpoint.difficulty_level, 'easy')
+        current_problems = Problem.objects.filter(difficulty=target_difficulty).order_by('?')[:10]
+    
+    context = {
+        'user_progress': user_progress,
+        'checkpoints': checkpoints_data,
+        'current_checkpoint': user_progress.current_checkpoint,
+        'current_problems': current_problems,
+        'progress_percentage': (user_progress.problems_solved_at_current / 
+                               user_progress.current_checkpoint.problems_to_unlock * 100) 
+                               if user_progress.current_checkpoint else 0,
+        'can_advance': user_progress.can_advance(),
+    }
+    
+    return render(request, 'app/pirate_map.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def solve_map_problem(request):
+    """
+    AJAX endpoint to check answer for a problem in the pirate map journey.
+    If correct, it records progress and may advance the checkpoint.
+    """
+    try:
+        data = json.loads(request.body)
+        problem_id = data.get('problem_id')
+        user_answer = data.get('answer', '').strip()
+        
+        if not problem_id or not user_answer:
+            return JsonResponse({'error': 'Missing data'}, status=400)
+        
+        problem = Problem.objects.get(id=problem_id)
+        user_progress = UserProgress.objects.get(user=request.user)
+        
+        # Evaluate the correct answer
+        try:
+            correct_answer = eval(problem.answer, {"__builtins__": None}, {})
+        except:
+            correct_answer = int(problem.answer)
+        
+        # Evaluate user answer
+        try:
+            user_answer_value = int(user_answer)
+        except ValueError:
+            return JsonResponse({
+                'correct': False,
+                'message': 'Please enter a valid number',
+                'correct_answer': correct_answer
+            })
+        
+        is_correct = (user_answer_value == correct_answer)
+        
+        # Save submission
+        Submission.objects.create(
+            user=request.user,
+            problem=problem,
+            submitted_answer=user_answer,
+            was_correct=is_correct
+        )
+        
+        response_data = {
+            'correct': is_correct,
+            'correct_answer': correct_answer if not is_correct else None,
+            'advanced': False,
+            'checkpoint_completed': False,
+        }
+        
+        if is_correct:
+            # Add to solved problems if not already there
+            if request.user not in problem.solved_by.all():
+                problem.solved_by.add(request.user)
+            
+            # Record progress
+            advanced = user_progress.record_problem_solved()
+            
+            response_data['advanced'] = advanced
+            response_data['checkpoint_completed'] = user_progress.can_advance() and not advanced
+            response_data['problems_solved'] = user_progress.problems_solved_at_current
+            response_data['problems_needed'] = user_progress.current_checkpoint.problems_to_unlock if user_progress.current_checkpoint else 0
+            
+            if advanced:
+                response_data['message'] = f'🎉 Checkpoint completed! Welcome to {user_progress.current_checkpoint.name}! +{user_progress.current_checkpoint.previous_checkpoint.points_reward if user_progress.current_checkpoint.previous_checkpoint else 0} points!'
+                response_data['new_checkpoint'] = {
+                    'name': user_progress.current_checkpoint.name,
+                    'emoji': user_progress.current_checkpoint.emoji,
+                    'number': user_progress.current_checkpoint.checkpoint_number,
+                }
+            elif user_progress.can_advance():
+                response_data['message'] = f'🎉 Correct! You can now advance to the next checkpoint!'
+            else:
+                remaining = user_progress.current_checkpoint.problems_to_unlock - user_progress.problems_solved_at_current
+                response_data['message'] = f'🎉 Correct! {remaining} more to unlock next checkpoint!'
+        else:
+            response_data['message'] = '❌ Incorrect. Try again, matey!'
+        
+        return JsonResponse(response_data)
+        
+    except Problem.DoesNotExist:
+        return JsonResponse({'error': 'Problem not found'}, status=404)
+    except UserProgress.DoesNotExist:
+        return JsonResponse({'error': 'User progress not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def advance_checkpoint(request):
+    """
+    AJAX endpoint to manually advance to next checkpoint if requirements are met.
+    """
+    try:
+        user_progress = UserProgress.objects.get(user=request.user)
+        
+        if not user_progress.can_advance():
+            return JsonResponse({
+                'success': False,
+                'message': 'You haven\'t solved enough problems yet!'
+            })
+        
+        advanced = user_progress.advance_to_next_checkpoint()
+        
+        if advanced:
+            return JsonResponse({
+                'success': True,
+                'message': f'⚓ Welcome to {user_progress.current_checkpoint.name}!',
+                'new_checkpoint': {
+                    'name': user_progress.current_checkpoint.name,
+                    'emoji': user_progress.current_checkpoint.emoji,
+                    'number': user_progress.current_checkpoint.checkpoint_number,
+                    'description': user_progress.current_checkpoint.description,
+                }
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'message': 'No more checkpoints available. You\'ve completed the journey! 🏆'
+            })
+            
+    except UserProgress.DoesNotExist:
+        return JsonResponse({'error': 'User progress not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
