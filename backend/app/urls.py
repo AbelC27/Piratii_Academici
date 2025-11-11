@@ -38,8 +38,8 @@ urlpatterns = [
     path('manage/delete/<int:user_id>/', views.delete_user, name='delete_user'),
 
     path('dashboard/', views.admin_view, name='admin'),
-    # path('dashboard/problems/', views.admin_problem_list, name='admin_problem_list'), # TODO: Implement admin_problem views
-    # path('dashboard/problems/add/', views.admin_problem_add, name='admin_problem_add'),
-    # path('dashboard/problems/edit/<int:problem_id>/', views.admin_problem_edit, name='admin_problem_edit'),
-    # path('dashboard/problems/delete/<int:problem_id>/', views.admin_problem_delete, name='admin_problem_delete'),
+    path('dashboard/problems/', views.admin_problem_list, name='admin_problem_list'), # TODO: Implement admin_problem views
+    path('dashboard/problems/add/', views.admin_problem_add, name='admin_problem_add'),
+    path('dashboard/problems/edit/<int:problem_id>/', views.admin_problem_edit, name='admin_problem_edit'),
+    path('dashboard/problems/delete/<int:problem_id>/', views.admin_problem_delete, name='admin_problem_delete'),
 ]

@@ -34,6 +34,8 @@
         top: 0;
         z-index: 1000;
         animation: slideDown 0.5s ease-out;
+        /* --- ADDED ---: Needed for dropdown positioning */
+        position: relative;
       }
 
       @keyframes slideDown {
@@ -57,6 +59,8 @@
         text-decoration: none;
         transition: all 0.3s ease;
         animation: pulse 2s ease-in-out infinite;
+        /* --- ADDED ---: Ensure brand doesn't shrink */
+        flex-shrink: 0;
       }
 
       @keyframes pulse {
@@ -71,6 +75,50 @@
 
       .navbar-brand:hover {
         transform: rotate(-5deg) scale(1.1);
+      }
+
+      /* --- NEW: Burger Button Styles --- */
+      .navbar-burger {
+        display: none; /* Hidden on desktop */
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        width: 3rem;
+        height: 3rem;
+        position: relative;
+        padding: 0;
+      }
+      .navbar-burger span {
+        display: block;
+        position: absolute;
+        width: 24px;
+        height: 3px;
+        background-color: #333;
+        left: 50%;
+        transform: translateX(-50%);
+        transition: all 0.3s ease;
+      }
+      .navbar-burger span:nth-child(1) { top: 10px; }
+      .navbar-burger span:nth-child(2) { top: 18px; }
+      .navbar-burger span:nth-child(3) { top: 26px; }
+
+      /* Burger active state (X) */
+      .navbar-burger.is-active span:nth-child(1) {
+        transform: translateX(-50%) translateY(8px) rotate(45deg);
+      }
+      .navbar-burger.is-active span:nth-child(2) {
+        opacity: 0;
+      }
+      .navbar-burger.is-active span:nth-child(3) {
+        transform: translateX(-50%) translateY(-8px) rotate(-45deg);
+      }
+
+      /* --- NEW: Wrapper for menu items --- */
+      .navbar-menu {
+        display: flex;
+        flex-grow: 1;
+        justify-content: space-between;
+        align-items: center;
       }
 
       .navbar-left {
@@ -139,13 +187,13 @@
 
       /* Add emoji icons after text */
       .nav-link[href*="problems"]::after { content: " 🧩"; }
-      .nav-link[href*="practice"]::after { content: " ⚡"; } /* Added icon for Practice */
-      .nav-link[href*="pirate-map"]::after { content: " 🗺️"; } /* --- PIRATE MAP ICON --- */
-      .nav-link[href*="speed-run"]::after { content: " ⏱️"; } /* --- ADDED ICON FOR SPEED RUN --- */
-      .nav-link[href*="daily_challenge"]::after { content: " 🏆"; } /* Moved icon here */
-      .nav-link[href*="leaderboard"]::after { content: " 📊"; } /* Changed icon */
+      .nav-link[href*="practice"]::after { content: " ⚡"; }
+      .nav-link[href*="pirate-map"]::after { content: " 🗺️"; }
+      .nav-link[href*="speed-run"]::after { content: " ⏱️"; }
+      .nav-link[href*="daily_challenge"]::after { content: " 🏆"; }
+      .nav-link[href*="leaderboard"]::after { content: " 📊"; }
       .nav-link[href*="history"]::after { content: " 📜"; }
-      .nav-link[href*="admin"]::after { content: " 👑"; } /* Moved icon here */
+      .nav-link[href*="admin"]::after { content: " 👑"; }
 
 
       .nav-btn {
@@ -275,13 +323,143 @@
           transform: translateX(0);
         }
       }
+      
+      .avatar-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        font-size: 1.2rem;
+        text-decoration: none;
+        margin-right: 1rem;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+      }
 
+      .avatar-link:hover {
+        transform: scale(1.1);
+        box-shadow: 0 0 15px rgba(102, 126, 234, 0.5);
+      }
+
+      /* --- NEW: Responsive Navbar --- */
+      /* This breakpoint can be adjusted */
+      @media (max-width: 992px) {
+          .navbar {
+              padding: 0.8rem 1rem;
+              /* --- ADDED ---: Allow wrapping for brand + burger */
+              flex-wrap: wrap; 
+          }
+          .navbar-burger {
+              display: flex; /* Show burger on mobile */
+              flex-direction: column;
+              justify-content: space-around;
+              align-items: center;
+          }
+          .navbar-menu {
+              display: none; /* Hide menu by default */
+              width: 100%;
+              flex-direction: column;
+              background: white;
+              /* --- UPDATED ---: Remove border/shadow, let it flow */
+              position: absolute;
+              top: 100%; /* Position it right below the navbar */
+              left: 0;
+              box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+          }
+          .navbar-menu.is-active {
+              display: block; /* Show menu when active */
+          }
+          
+          /* Stack links vertically */
+          .navbar-left, .navbar-links {
+              flex-direction: column;
+              align-items: flex-start; /* Align links to the left */
+              width: 100%;
+          }
+          .navbar-left {
+              gap: 0;
+          }
+          .navbar-links {
+              gap: 0;
+              padding-top: 0.5rem;
+              border-top: 1px solid #eee;
+          }
+
+          /* Style all mobile links for consistency */
+          .nav-link, .nav-btn, .user-info, .avatar-link {
+              width: 100%;
+              border-radius: 0;
+              padding: 0.8rem 1.5rem;
+              margin: 0;
+              border: none;
+              box-shadow: none !important;
+              transform: none !important;
+              background: transparent;
+              color: #333;
+              font-size: 1rem;
+              /* --- ADDED ---: Fix text alignment */
+              text-align: left; 
+              display: block;
+          }
+          .nav-link:hover, .btn-login:hover, .btn-signup:hover, .btn-logout:hover {
+              background: #f5f5f5; /* Simple hover effect for mobile */
+              color: #333;
+          }
+          /* Special colors for buttons in mobile list */
+          .btn-login {
+              color: #667eea;
+          }
+          .btn-signup {
+              background: #f5f5f5;
+              color: #667eea;
+          }
+          .btn-signup:hover {
+              background: #e9e9e9;
+          }
+          .btn-logout {
+              color: #dc3545;
+          }
+          .btn-logout:hover {
+              background: #fdf0f0;
+          }
+          
+          .user-info {
+             display: block; /* Show user info in the list */
+          }
+          .avatar-link {
+              display: flex;
+              align-items: center;
+              gap: 0.5rem;
+              height: auto;
+              background: transparent;
+              color: #333;
+          }
+          .avatar-link:hover {
+              transform: none !important;
+              box-shadow: none !important;
+              background: #f5f5f5;
+          }
+      }
+
+      /* Page Content Styles (Unchanged) */
       .page-wrapper {
         display: flex;
-        /* align-items: center; Remove center alignment to allow scrolling */
         justify-content: center;
         min-height: calc(100vh - 80px); /* Adjust height based on navbar */
         padding: 2rem;
+      }
+
+      /* --- UPDATED ---: Add media query for page padding on mobile */
+      @media (max-width: 768px) {
+        .page-wrapper {
+          padding: 1rem; /* Less padding on small screens */
+        }
+        .container {
+          padding: 1.5rem;
+        }
       }
 
       .container {
@@ -444,18 +622,18 @@
 
       .profile-section {
         display: flex;
-        justify-content: space-between; /* Fix typo */
+        justify-content: space-between;
         align-items: center;
         margin-bottom: 1.25rem;
         background: rgba(255, 255, 255, 0.9);
-        padding: 0.4rem 1rem; /* Add horizontal padding */
+        padding: 0.4rem 1rem;
         border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); /* Softer shadow */
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
       }
       .profile-section p {
         flex: 1;
-        margin-right: 1rem; /* Reduced margin */
-        color: #333; /* Ensure text is dark */
+        margin-right: 1rem;
+        color: #333;
       }
 
       .profile-info {
@@ -480,39 +658,15 @@
         font-weight: 500;
         cursor: pointer;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3); /* Softer shadow */
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
       }
 
       .btn-modify:hover {
-        transform: translateY(-2px) scale(1.03); /* Slightly less scale */
+        transform: translateY(-2px) scale(1.03);
         box-shadow: 0 6px 15px rgba(102, 126, 234, 0.4);
         filter: brightness(1.1);
       }
-
-      /* Adjust container max-width on profile/edit pages if needed */
-      /* Example: */
-      /* body:has(> .page-wrapper > .container > .profile-header) .container { max-width: 600px; } */
-
-
-      .avatar-link {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        font-size: 1.2rem;
-        text-decoration: none;
-        margin-right: 1rem;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-      }
-
-      .avatar-link:hover {
-        transform: scale(1.1);
-        box-shadow: 0 0 15px rgba(102, 126, 234, 0.5);
-      }
+      
       .btn-back {
         display: inline-block;
         text-decoration: none;
@@ -533,91 +687,63 @@
         transform: translateY(-2px);
       }
 
-      /* Responsive Navbar */
-      @media (max-width: 992px) { /* Adjust breakpoint as needed */
-          .navbar-left {
-              gap: 0.3rem; /* Reduce gap */
-          }
-          .nav-link, .nav-btn {
-              padding: 0.5rem 0.8rem; /* Smaller padding */
-              font-size: 0.9rem; /* Smaller font */
-          }
-          .navbar-brand {
-              font-size: 1.3rem;
-          }
-          .user-info {
-              font-size: 0.9rem;
-              padding: 0.4rem 0.8rem;
-              margin-right: 0.5rem;
-          }
-          .avatar-link {
-              width: 35px;
-              height: 35px;
-              font-size: 1rem;
-              margin-right: 0.5rem;
-          }
-           .navbar {
-              padding: 0.8rem 1rem; /* Adjust padding */
-          }
-      }
-       @media (max-width: 768px) {
-           .navbar-left .nav-link, /* Hide some links on very small screens */
-           .navbar-left .nav-link[href*="history"] { /* Example: hide history links */
-                /* display: none; */ /* Uncomment to hide */
-           }
-            .user-info {
-               display: none; /* Hide welcome message */
-           }
-       }
-
-
     </style>
   </head>
   <body>
     <nav class="navbar">
-      <div class="navbar-left">
-        <a href="{% url 'home' %}" class="navbar-brand">PBMate</a>
-        <a href="{% url 'pirate_map' %}" class="nav-link" 
-           style="background: linear-gradient(135deg, rgba(255, 140, 0, 0.2) 0%, rgba(255, 69, 0, 0.2) 100%); font-weight: 600;">Pirate Map 🗺️</a>
-        <a href="{% url 'problems' %}" class="nav-link">Problems 🎲</a>
-        <a href="{% url 'practice' %}" class="nav-link">Practice 🔥</a>
-        <a href="{% url 'speed_run' %}" class="nav-link">Speed Run ⏱️</a>
+      <a href="{% url 'home' %}" class="navbar-brand">PBMate</a>
+
+      <button class="navbar-burger" id="navbarBurger" aria-label="menu" aria-expanded="false">
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+      </button>
+
+      <div class="navbar-menu" id="navbarMenu">
         
-        <a
-          href="{% url 'daily_challenge' %}"
-          class="nav-link"
-          style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 193, 7, 0.2) 100%); font-weight: 600;"
-          >Daily Challenge</a
-        >
-        <a href="{% url 'leaderboard' %}" class="nav-link">Leaderboard 📊</a>
+        <div class="navbar-left">
+          <a href="{% url 'pirate_map' %}" class="nav-link" 
+            style="background: linear-gradient(135deg, rgba(255, 140, 0, 0.2) 0%, rgba(255, 69, 0, 0.2) 100%); font-weight: 600;">Pirate Map 🗺️</a>
+          <a href="{% url 'problems' %}" class="nav-link">Problems 🎲</a>
+          <a href="{% url 'practice' %}" class="nav-link">Practice 🔥</a>
+          <a href="{% url 'speed_run' %}" class="nav-link">Speed Run ⏱️</a>
+          <a
+            href="{% url 'daily_challenge' %}"
+            class="nav-link"
+            style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 193, 7, 0.2) 100%); font-weight: 600;"
+            >Daily Challenge</a
+          >
+          <a href="{% url 'leaderboard' %}" class="nav-link">Leaderboard 📊</a>
 
-        {% if user.is_authenticated %}
-        <a href="{% url 'my_history' %}" class="nav-link">My History 📚</a>
-        {% endif %}
-        <a href="{% url 'problem_history' %}" class="nav-link">Global History 📊</a>
+          {% if user.is_authenticated %}
+          <a href="{% url 'my_history' %}" class="nav-link">My History 📚</a>
+          {% endif %}
+          <a href="{% url 'problem_history' %}" class="nav-link">Global History 📊</a>
 
-        {% if user.is_authenticated and user.is_staff %}
-        <a
-          href="{% url 'admin' %}"
-          class="nav-link"
-          style=" background: linear-gradient( 135deg, rgba(255, 193, 7, 0.2) 0%, rgba(255, 152, 0, 0.2) 100% );"
-          >Admin</a
-        >
-        {% endif %}
-      </div>
-      <div class="navbar-links">
-        {% if user.is_authenticated %}
-        <span class="user-info">Welcome, {{ user.username }}!</span>
-        <span class="avatar-link" title="My Profile">
+          {% if user.is_authenticated and user.is_staff %}
+          <a
+            href="{% url 'admin' %}"
+            class="nav-link"
+            style=" background: linear-gradient( 135deg, rgba(255, 193, 7, 0.2) 0%, rgba(255, 152, 0, 0.2) 100% );"
+            >Admin</a
+          >
+          {% endif %}
+        </div>
+
+        <div class="navbar-links">
+          {% if user.is_authenticated %}
+          <span class="user-info">Welcome, {{ user.username }}!</span>
+          <a href="{% url 'profile' %}" class="avatar-link" title="My Profile">
             {{ user.userprofile.avatar|default:'👤' }}
-        </span>
-        <a href="{% url 'logout' %}" class="nav-btn btn-logout">Logout</a>
-        {% else %}
-        <a href="{% url 'login' %}" class="nav-btn btn-login">Login</a>
-        <a href="{% url 'signup' %}" class="nav-btn btn-signup">Sign Up</a>
-        {% endif %}
-      </div>
-    </nav>
+          </a>
+          <a href="{% url 'logout' %}" class="nav-btn btn-logout">Logout</a>
+          {% else %}
+          <a href="{% url 'login' %}" class="nav-btn btn-login">Login</a>
+          <a href="{% url 'signup' %}" class="nav-btn btn-signup">Sign Up</a>
+          {% endif %}
+        </div>
+
+      </div> </nav>
 
     <div class="page-wrapper">
       <div class="container">
@@ -630,5 +756,22 @@
         {% endif %} {% block content %} {% endblock %}
       </div>
     </div>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        // Get the burger button and the menu
+        const $navbarBurger = document.getElementById('navbarBurger');
+        const $navbarMenu = document.getElementById('navbarMenu');
+
+        if ($navbarBurger && $navbarMenu) {
+          // Add a click event listener
+          $navbarBurger.addEventListener('click', () => {
+            // Toggle the 'is-active' class on both
+            $navbarBurger.classList.toggle('is-active');
+            $navbarMenu.classList.toggle('is-active');
+          });
+        }
+      });
+    </script>
   </body>
 </html>
